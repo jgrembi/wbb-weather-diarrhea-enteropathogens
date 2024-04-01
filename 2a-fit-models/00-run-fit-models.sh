@@ -14,39 +14,39 @@
 ## Fit diarrhea models - for diarrhea cohort, control arm only
 #######################################################################
 ## run diarrhea-unadjusted-0 
-cd /oak/stanford/groups/relman/users/jgrembi/wash/WBB-weather-diarrhea-pathogens/2-analysis/0a-diarrhea-unadjusted-0
-sbatch run-diarrhea-unadjusted-0-1-sbatch.sh            
-sbatch run-diarrhea-unadjusted-0-2-sbatch.sh       
-sbatch run-diarrhea-unadjusted-0-3-sbatch.sh  
+# cd /oak/stanford/groups/relman/users/jgrembi/wash/WBB-weather-diarrhea-pathogens/2-analysis/0a-diarrhea-unadjusted-0
+sbatch 0a-diarrhea-unadjusted-0/run-diarrhea-unadjusted-0-1-sbatch.sh            
+sbatch 0a-diarrhea-unadjusted-0/run-diarrhea-unadjusted-0-2-sbatch.sh       
+sbatch 0a-diarrhea-unadjusted-0/run-diarrhea-unadjusted-0-3-sbatch.sh  
 
 ## run diarrhea-adjusted-0 
-cd /oak/stanford/groups/relman/users/jgrembi/wash/WBB-weather-diarrhea-pathogens/2-analysis/0b-diarrhea-adjusted-0
-sbatch run-diarrhea-adjusted-0-1-sbatch.sh            
-sbatch run-diarrhea-adjusted-0-2-sbatch.sh       
-sbatch run-diarrhea-adjusted-0-3-sbatch.sh            
+# cd /oak/stanford/groups/relman/users/jgrembi/wash/WBB-weather-diarrhea-pathogens/2-analysis/0b-diarrhea-adjusted-0
+sbatch 0b-diarrhea-adjusted-0/run-diarrhea-adjusted-0-1-sbatch.sh            
+sbatch 0b-diarrhea-adjusted-0/run-diarrhea-adjusted-0-2-sbatch.sh       
+sbatch 0b-diarrhea-adjusted-0/run-diarrhea-adjusted-0-3-sbatch.sh            
 
 ## run diarrhea-unadjusted-0-negc 
-cd /oak/stanford/groups/relman/users/jgrembi/wash/WBB-weather-diarrhea-pathogens/2-analysis/0c-diarrhea-unadjusted-0-negc
-sbatch run-diarrhea-unadjusted-0-negc-1-sbatch.sh            
-sbatch run-diarrhea-unadjusted-0-negc-2-sbatch.sh            
+# cd /oak/stanford/groups/relman/users/jgrembi/wash/WBB-weather-diarrhea-pathogens/2-analysis/0c-diarrhea-unadjusted-0-negc
+sbatch 0c-diarrhea-unadjusted-0-negc/run-diarrhea-unadjusted-0-negc-1-sbatch.sh            
+sbatch 0c-diarrhea-unadjusted-0-negc/run-diarrhea-unadjusted-0-negc-2-sbatch.sh            
 
 ## run diarrhea-adjusted-0-negc 
-cd /oak/stanford/groups/relman/users/jgrembi/wash/WBB-weather-diarrhea-pathogens/2-analysis/0c-diarrhea-adjusted-0-negc
-sbatch run-diarrhea-adjusted-0-negc-1-sbatch.sh            
-sbatch run-diarrhea-adjusted-0-negc-2-sbatch.sh            
+# cd /oak/stanford/groups/relman/users/jgrembi/wash/WBB-weather-diarrhea-pathogens/2-analysis/0c-diarrhea-adjusted-0-negc
+sbatch 0c-diarrhea-adjusted-0-negc/run-diarrhea-adjusted-0-negc-1-sbatch.sh            
+sbatch 0c-diarrhea-adjusted-0-negc/run-diarrhea-adjusted-0-negc-2-sbatch.sh            
 
 ## run diarrhea-adjusted-interaction-age-0 
-cd /oak/stanford/groups/relman/users/jgrembi/wash/WBB-weather-diarrhea-pathogens/2-analysis/0d-diarrhea-adjusted-interaction-age-0
-sbatch run-diarrhea-interaction-age-adj-0-1-sbatch.sh          
-sbatch run-diarrhea-interaction-age-adj-0-2-sbatch.sh    
+# cd /oak/stanford/groups/relman/users/jgrembi/wash/WBB-weather-diarrhea-pathogens/2-analysis/0d-diarrhea-adjusted-interaction-age-0
+sbatch 0d-diarrhea-adjusted-interaction-age-0/run-diarrhea-interaction-age-adj-0-1-sbatch.sh          
+sbatch 0d-diarrhea-adjusted-interaction-age-0/run-diarrhea-interaction-age-adj-0-2-sbatch.sh    
 
 # run diarrhea-adjusted-interaction-ppt-temp-0 
-cd /oak/stanford/groups/relman/users/jgrembi/wash/WBB-weather-diarrhea-pathogens/2-analysis/0e-diarrhea-adjusted-interaction-ppt-temp-0
-sbatch run-diarrhea-interaction-ppt-adj-0-1-sbatch.sh
+# cd /oak/stanford/groups/relman/users/jgrembi/wash/WBB-weather-diarrhea-pathogens/2-analysis/0e-diarrhea-adjusted-interaction-ppt-temp-0
+sbatch 0e-diarrhea-adjusted-interaction-ppt-temp-0/run-diarrhea-interaction-ppt-adj-0-1-sbatch.sh
 
 ## run diarrhea-adjusted-nointeraction-ppt-temp-0 
 cd /oak/stanford/groups/relman/users/jgrembi/wash/WBB-weather-diarrhea-pathogens/2-analysis/0f-diarrhea-adjusted-nointeraction-ppt-temp-0 
-sbatch run-diarrhea-nointeraction-ppt-temp-adj-0-1-sbatch.sh
+sbatch 0f-diarrhea-adjusted-nointeraction-ppt-temp-0/run-diarrhea-nointeraction-ppt-temp-adj-0-1-sbatch.sh
 
 #######################################################################
 ## Fit pathogen models - for pathogen cohort only

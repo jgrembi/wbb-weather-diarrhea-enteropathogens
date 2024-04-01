@@ -32,26 +32,14 @@ ml pandoc/2.7.3
 
 
 #######################################################################
-## Run manuscript stats
-# These are files whose interactive output (on the command line of R/RStudio)
-# provide the statistics reported in the results text of the manuscript
-#######################################################################
-cd /oak/stanford/groups/relman/users/jgrembi/wash/WBB-weather-diarrhea-pathogens/2-analysis/
-R CMD BATCH --no-save 4-manuscript-stats-diarrhea-prev.R
-R CMD BATCH --no-save 5-manuscript-stats-temperature.R
-R CMD BATCH --no-save 6-manuscript-stats-precipitation.R
-R CMD BATCH --no-save 7-manuscript-stats-surface-water.R
-R CMD BATCH --no-save 8-manuscript-stats-humidity-vpd.R
-
-#######################################################################
 ## Run manuscript figures
 # These produce all main and supplemental figures for the manuscript
 # which will be saved in the directory 4-figures
 #######################################################################
-cd /oak/stanford/groups/relman/users/jgrembi/wash/WBB-weather-diarrhea-pathogens/3-figure-scripts/
+cd /oak/stanford/groups/relman/users/jgrembi/wash/wbb-weather-diarrhea-enteropathogens/3-figure-scripts/
 R CMD BATCH --no-save 1-map-diar-prev.R
 
-cd /oak/stanford/groups/relman/users/jgrembi/wash/WBB-weather-diarrhea-pathogens/3-figure-scripts/2-riskfactor-biweekly-figure/
+cd /oak/stanford/groups/relman/users/jgrembi/wash/wbb-weather-diarrhea-enteropathogens/3-figure-scripts/2-riskfactor-biweekly-figure/
 R CMD BATCH --no-save 1-biweekly_dates.R
 R CMD BATCH --no-save 2a-process-temp-alldays.R
 R CMD BATCH --no-save 2b-process-ppt-alldays.R
@@ -59,7 +47,7 @@ R CMD BATCH --no-save 2c-process-surface-water-alldays.R
 R CMD BATCH --no-save 2d-process-vpd-alldays.R
 R CMD BATCH --no-save 3-fig-diarrhea-risk-factors-over-time-control.R
 
-cd /oak/stanford/groups/relman/users/jgrembi/wash/WBB-weather-diarrhea-pathogens/3-figure-scripts/
+cd /oak/stanford/groups/relman/users/jgrembi/wash/wbb-weather-diarrhea-enteropathogens/3-figure-scripts/
 R CMD BATCH --no-save 3-plot-gam-temperature-maintext.R
 R CMD BATCH --no-save 4-plot-risk-factor-prev-ratios-rain.R
 R CMD BATCH --no-save S1-plot-env-correlations.R
@@ -71,14 +59,3 @@ R CMD BATCH --no-save S9-plot-proportion-household-adjusted.R
 R CMD BATCH --no-save S10-plot-gam-vpd.R
 R CMD BATCH --no-save S11-diarrhea-risk-factors-age-interaction.R
 R CMD BATCH --no-save S12-plot-gam-negc-temp.R
-
-#######################################################################
-## Run manuscript tables
-# These produce all main and supplemental tables for the manuscript
-# which will be saved in the directory 6-tables
-#######################################################################
-cd /oak/stanford/groups/relman/users/jgrembi/wash/WBB-weather-diarrhea-pathogens/5-table-scripts/
-R CMD BATCH --no-save 1-table_demographics_script.R
-R CMD BATCH --no-save S1-table-bacteria-temp-outcomes.R
-R CMD BATCH --no-save S2-aic-comparison-temp-ppt-interaction-models.R
-R CMD BATCH --no-save S3-table-negative-control-outcomes.R
