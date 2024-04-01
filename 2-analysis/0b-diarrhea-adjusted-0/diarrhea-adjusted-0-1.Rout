@@ -1,0 +1,1529 @@
+
+R version 4.0.2 (2020-06-22) -- "Taking Off Again"
+Copyright (C) 2020 The R Foundation for Statistical Computing
+Platform: x86_64-pc-linux-gnu (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> #######################################
+> # WASH Benefits Bangladesh  
+> # Hydrometeorological risk factors for diarrhea and enteropathogens
+> 
+> # GAM analysis for diarrhea outcomes - adjusted
+> #######################################
+> 
+> rm(list=ls())
+> 
+> 
+> # configure directories, load libraries and base functions
+> source(paste0(here::here(), "/0-config.R"))
+here() starts at /oak/stanford/groups/relman/users/jgrembi/wash/WBB-weather-diarrhea-pathogens
+
+Attaching package: ‘dplyr’
+
+The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+Loading required package: ggplot2
+
+Attaching package: ‘reshape2’
+
+The following object is masked from ‘package:tidyr’:
+
+    smiths
+
+
+Attaching package: ‘gridExtra’
+
+The following object is masked from ‘package:dplyr’:
+
+    combine
+
+Welcome to the washb package
+Version: 0.2.2
+Created on 2018-11-07
+
+This software was developed with funding from the
+Bill & Melinda Gates Foundation (grant number OPPGD759).
+
+The package's reference manual and vignette are also online:
+https://ben-arnold.github.io/washb
+
+
+Attaching package: ‘lubridate’
+
+The following objects are masked from ‘package:base’:
+
+    date, intersect, setdiff, union
+
+Loading required package: nlme
+
+Attaching package: ‘nlme’
+
+The following object is masked from ‘package:dplyr’:
+
+    collapse
+
+This is mgcv 1.8-40. For overview type 'help("mgcv-package")'.
+Loading required package: Matrix
+
+Attaching package: ‘Matrix’
+
+The following objects are masked from ‘package:tidyr’:
+
+    expand, pack, unpack
+
+Loading required package: lme4
+
+Attaching package: ‘lme4’
+
+The following object is masked from ‘package:nlme’:
+
+    lmList
+
+This is gamm4 0.2-6
+
+This is DHARMa 0.4.5. For overview type '?DHARMa'. For recent changes, type news(package = 'DHARMa')
+Loading required package: viridisLite
+Loading required package: lattice
+
+Attaching package: ‘caret’
+
+The following object is masked from ‘package:purrr’:
+
+    lift
+
+
+Attaching package: ‘wrapr’
+
+The following objects are masked from ‘package:Matrix’:
+
+    pack, unpack
+
+The following object is masked from ‘package:mgcv’:
+
+    %.%
+
+The following objects are masked from ‘package:tidyr’:
+
+    pack, unpack
+
+The following object is masked from ‘package:dplyr’:
+
+    coalesce
+
+── Attaching packages ─────────────────────────────────────── tidyverse 1.3.1 ──
+✔ tibble  3.1.7     ✔ forcats 0.5.1
+✔ readr   1.4.0     
+── Conflicts ────────────────────────────────────────── tidyverse_conflicts() ──
+✖ lubridate::as.difftime() masks base::as.difftime()
+✖ wrapr::coalesce()        masks dplyr::coalesce()
+✖ nlme::collapse()         masks dplyr::collapse()
+✖ gridExtra::combine()     masks dplyr::combine()
+✖ lubridate::date()        masks base::date()
+✖ Matrix::expand()         masks tidyr::expand()
+✖ dplyr::filter()          masks stats::filter()
+✖ tibble::has_name()       masks assertthat::has_name()
+✖ lubridate::intersect()   masks base::intersect()
+✖ dplyr::lag()             masks stats::lag()
+✖ caret::lift()            masks purrr::lift()
+✖ wrapr::pack()            masks Matrix::pack(), tidyr::pack()
+✖ lubridate::setdiff()     masks base::setdiff()
+✖ lubridate::union()       masks base::union()
+✖ wrapr::unpack()          masks Matrix::unpack(), tidyr::unpack()
+✖ tibble::view()           masks wrapr::view()
+
+Attaching package: ‘kableExtra’
+
+The following object is masked from ‘package:dplyr’:
+
+    group_rows
+
+Loading required package: foreach
+
+Attaching package: ‘foreach’
+
+The following objects are masked from ‘package:purrr’:
+
+    accumulate, when
+
+Loading required package: iterators
+Loading required package: parallel
+Loading required package: rngtools
+
+Attaching package: ‘magrittr’
+
+The following object is masked from ‘package:purrr’:
+
+    set_names
+
+The following object is masked from ‘package:tidyr’:
+
+    extract
+
+
+Attaching package: ‘cowplot’
+
+The following object is masked from ‘package:lubridate’:
+
+    stamp
+
+> 
+> d_diarrhea = readRDS(paste0(clean_offset_data_dir, clean_diarr_merged_offset))
+> 
+> #filter for intervention = 0
+> d_diarrhea = d_diarrhea %>% filter(intervention==0)
+> 
+> analysis = "diarrhea-adjusted-0"
+> 
+> diarrhea_outcomes = c("diar7d")
+> 
+> #make table with one line for each outcome-risk factor pair
+> diarrhea_tbl = data.frame(outcome = rep(diarrhea_outcomes, length(risk_factors))) %>% 
++   arrange(outcome) %>% 
++   mutate(risk_factor = rep(risk_factors, length(diarrhea_outcomes))) %>%
++   filter(!grepl("0weeklag", risk_factor))
+> 
+> #make table with one line for each outcome-risk factor pair and include list of adjustment covariates as another column
+> diarrhea_tbl_adj <- map_dfr(1:dim(diarrhea_tbl)[1], function(x) {
++   outcome = diarrhea_outcomes
++   risk_factor = diarrhea_tbl[x, "risk_factor"]
++   w = get_covariate_list(outcome_cat = outcome, risk_factor = risk_factor)
++   out = data.frame(outcome = outcome, risk_factor = risk_factor) %>%
++     mutate(w = list(w))
++   return(out)
++ })
+> 
+> ## function to fit model, save results, run check script and produce fit checking output file.
+> fit_diarrhea_gam = function(diarrhea_tbl_row) {
++   print("Fitting GAM")
++   x <- fit_gam(df = d_diarrhea,
++                y = as.character(diarrhea_tbl_row[["outcome"]]),
++                a = as.character(diarrhea_tbl_row[["risk_factor"]]),
++                w = unlist(diarrhea_tbl_row[["w"]]),
++                family = "poisson")
++   print("Saving results")
++   saveRDS(x, paste0(sherlock_results_dir,
++                     "gam_outputs/", analysis, "/gam_",
++                     str_replace(diarrhea_tbl_row[["outcome"]], "\\.", "_"),
++                     "_0_",
++                     diarrhea_tbl_row[["risk_factor"]],
++                     ".RDS"))
++   # if(x$message %in% model_pass) {
++   #   print("Running check")
++   #   check_gam_fit(outcome = str_replace(diarrhea_tbl_row[["outcome"]], "\\.", "_"),
++   #                 risk_factor = diarrhea_tbl_row[["risk_factor"]],
++   #                 output_type = "pdf",
++   #                 analysis = analysis,
++   #                 plot = "only risk factor",
++   #                 results_dir = sherlock_results_dir)
++   #   gam_check_file_old_name = paste0(sherlock_results_dir, "/gam_check/", analysis,"/gam_check_", diarrhea_tbl_row[["outcome"]], "_", diarrhea_tbl_row[["risk_factor"]], ".pdf")
++   #   gam_check_file_new_name = paste0(sherlock_results_dir, "gam_check/", analysis,"/gam_check_", diarrhea_tbl_row[["outcome"]],"_0_", diarrhea_tbl_row[["risk_factor"]], ".pdf")
++   #   file.rename(from = gam_check_file_old_name, to = gam_check_file_new_name)
++   # } else {
++   #   print("Skipping gam check because model not successful")
++   # }
++ }
+> 
+> 
+> nb_row=nrow(diarrhea_tbl_adj)
+> print(nb_row)
+[1] 58
+> missing <- vector(mode='list', length=1)
+> 
+> try_fit_diarrhea_gam <- function(diarrhea_tbl_row) {
++   out <- tryCatch(
++     {
++       fit_diarrhea_gam(diarrhea_tbl_row = diarrhea_tbl_row)
++     },
++     error=function(cond) {
++       message("There was an error.")
++       message(cond)
++       return(NA)
++     },
++     finally = {
++       message("Trycatch is finished.")
++     }
++   )
++   return(out)
++ }
+> 
+> 
+> registerDoParallel(detectCores())
+> foreach(i=1:20) %dopar% {
++ # for (i in (25:nb_row)){
++   print(diarrhea_tbl_adj[i,])
++   if (diarrhea_tbl_adj[i,2] %in% names(d_diarrhea)){
++     try_fit_diarrhea_gam(diarrhea_tbl_row = diarrhea_tbl_adj[i,])
++   } else {
++     print("Error: missing risk factor")
++   }
++ }
+  outcome              risk_factor                           w
+1  diar7d temp_monthavg_1weeklag_C sex, aged_C, HHwealth_quart
+[1] "Fitting GAM"
+  outcome              risk_factor                           w
+2  diar7d temp_monthavg_2weeklag_C sex, aged_C, HHwealth_quart
+[1] "Fitting GAM"
+  outcome              risk_factor                           w
+3  diar7d temp_monthavg_3weeklag_C sex, aged_C, HHwealth_quart
+[1] "Fitting GAM"
+  outcome              risk_factor                           w
+4  diar7d temp_monthmin_1weeklag_C sex, aged_C, HHwealth_quart
+[1] "Fitting GAM"
+Observations lost due to missing outcome: 0
+Loading required package: lmtest
+  outcome              risk_factor                           w
+5  diar7d temp_monthmin_2weeklag_C sex, aged_C, HHwealth_quart
+[1] "Fitting GAM"
+Observations lost due to missing outcome: 0
+Observations lost due to missing outcome: 0
+Loading required package: lmtest
+  outcome              risk_factor                           w
+6  diar7d temp_monthmin_3weeklag_C sex, aged_C, HHwealth_quart
+[1] "Fitting GAM"
+Loading required package: lmtest
+Observations lost due to missing outcome: 0
+  outcome              risk_factor                           w
+7  diar7d temp_monthmax_1weeklag_C sex, aged_C, HHwealth_quart
+Loading required package: lmtest
+[1] "Fitting GAM"
+Observations lost due to missing outcome: 0
+  outcome              risk_factor                           w
+8  diar7d temp_monthmax_2weeklag_C sex, aged_C, HHwealth_quart
+Loading required package: lmtest
+[1] "Fitting GAM"
+Observations lost due to missing outcome: 0
+  outcome              risk_factor                           w
+9  diar7d temp_monthmax_3weeklag_C sex, aged_C, HHwealth_quart
+Loading required package: lmtest
+[1] "Fitting GAM"
+Observations lost due to missing outcome: 0
+Loading required package: lmtest
+   outcome             risk_factor                           w
+10  diar7d temp_weekavg_1weeklag_C sex, aged_C, HHwealth_quart
+[1] "Fitting GAM"
+Observations lost due to missing outcome: 0
+   outcome             risk_factor                           w
+11  diar7d temp_weekavg_2weeklag_C sex, aged_C, HHwealth_quart
+[1] "Fitting GAM"
+Loading required package: lmtest
+Observations lost due to missing outcome: 0
+   outcome             risk_factor                           w
+12  diar7d temp_weekavg_3weeklag_C sex, aged_C, HHwealth_quart
+[1] "Fitting GAM"
+Loading required package: lmtest
+Observations lost due to missing outcome: 0
+   outcome             risk_factor                           w
+13  diar7d temp_weekmin_1weeklag_C sex, aged_C, HHwealth_quart
+[1] "Fitting GAM"
+Loading required package: lmtest
+Observations lost due to missing outcome: 0
+   outcome             risk_factor                           w
+14  diar7d temp_weekmin_2weeklag_C sex, aged_C, HHwealth_quart
+[1] "Fitting GAM"
+Loading required package: lmtest
+Observations lost due to missing outcome: 0
+Loading required package: lmtest
+   outcome             risk_factor                           w
+15  diar7d temp_weekmin_3weeklag_C sex, aged_C, HHwealth_quart
+[1] "Fitting GAM"
+Observations lost due to missing outcome: 0
+   outcome             risk_factor                           w
+16  diar7d temp_weekmax_1weeklag_C sex, aged_C, HHwealth_quart
+Loading required package: lmtest
+[1] "Fitting GAM"
+Observations lost due to missing outcome: 0
+   outcome             risk_factor                           w
+17  diar7d temp_weekmax_2weeklag_C sex, aged_C, HHwealth_quart
+Loading required package: lmtest
+[1] "Fitting GAM"
+Observations lost due to missing outcome: 0
+   outcome             risk_factor                           w
+18  diar7d temp_weekmax_3weeklag_C sex, aged_C, HHwealth_quart
+[1] "Fitting GAM"
+Loading required package: lmtest
+Observations lost due to missing outcome: 0
+   outcome                  risk_factor                           w
+19  diar7d temp_weekavg_1weeklag_median sex, aged_C, HHwealth_quart
+[1] "Fitting GAM"
+Loading required package: lmtest
+Observations lost due to missing outcome: 0
+   outcome                  risk_factor                           w
+20  diar7d temp_weekavg_2weeklag_median sex, aged_C, HHwealth_quart
+Loading required package: lmtest
+[1] "Fitting GAM"
+Observations lost due to missing outcome: 0
+Loading required package: lmtest
+Observations lost due to missing outcome: 0
+Loading required package: lmtest
+Observations lost due to missing outcome: 0
+Loading required package: lmtest
+Loading required package: zoo
+Loading required package: zoo
+Loading required package: zoo
+Loading required package: zoo
+Loading required package: zoo
+Loading required package: zoo
+Loading required package: zoo
+Loading required package: zoo
+Loading required package: zoo
+Loading required package: zoo
+Loading required package: zoo
+Loading required package: zoo
+Loading required package: zoo
+Loading required package: zoo
+Loading required package: zoo
+Loading required package: zoo
+Loading required package: zoo
+Loading required package: zoo
+Loading required package: zoo
+Loading required package: zoo
+
+Attaching package: ‘zoo’
+
+
+Attaching package: ‘zoo’
+
+
+Attaching package: ‘zoo’
+
+The following objects are masked from ‘package:base’:
+
+    as.Date, as.Date.numeric
+
+The following objects are masked from ‘package:base’:
+
+    as.Date, as.Date.numeric
+
+
+Attaching package: ‘zoo’
+
+The following objects are masked from ‘package:base’:
+
+    as.Date, as.Date.numeric
+
+
+Attaching package: ‘zoo’
+
+The following objects are masked from ‘package:base’:
+
+    as.Date, as.Date.numeric
+
+The following objects are masked from ‘package:base’:
+
+    as.Date, as.Date.numeric
+
+
+Attaching package: ‘zoo’
+
+
+Attaching package: ‘zoo’
+
+The following objects are masked from ‘package:base’:
+
+    as.Date, as.Date.numeric
+
+The following objects are masked from ‘package:base’:
+
+    as.Date, as.Date.numeric
+
+
+Attaching package: ‘zoo’
+
+The following objects are masked from ‘package:base’:
+
+    as.Date, as.Date.numeric
+
+
+Attaching package: ‘zoo’
+
+The following objects are masked from ‘package:base’:
+
+    as.Date, as.Date.numeric
+
+
+Attaching package: ‘zoo’
+
+The following objects are masked from ‘package:base’:
+
+    as.Date, as.Date.numeric
+
+
+Attaching package: ‘zoo’
+
+The following objects are masked from ‘package:base’:
+
+    as.Date, as.Date.numeric
+
+
+Attaching package: ‘zoo’
+
+The following objects are masked from ‘package:base’:
+
+    as.Date, as.Date.numeric
+
+
+Attaching package: ‘zoo’
+
+The following objects are masked from ‘package:base’:
+
+    as.Date, as.Date.numeric
+
+
+Attaching package: ‘zoo’
+
+The following objects are masked from ‘package:base’:
+
+    as.Date, as.Date.numeric
+
+
+Attaching package: ‘zoo’
+
+
+Attaching package: ‘zoo’
+
+The following objects are masked from ‘package:base’:
+
+    as.Date, as.Date.numeric
+
+The following objects are masked from ‘package:base’:
+
+    as.Date, as.Date.numeric
+
+
+Attaching package: ‘zoo’
+
+The following objects are masked from ‘package:base’:
+
+    as.Date, as.Date.numeric
+
+
+Attaching package: ‘zoo’
+
+The following objects are masked from ‘package:base’:
+
+    as.Date, as.Date.numeric
+
+
+Attaching package: ‘zoo’
+
+The following objects are masked from ‘package:base’:
+
+    as.Date, as.Date.numeric
+
+
+Attaching package: ‘zoo’
+
+The following objects are masked from ‘package:base’:
+
+    as.Date, as.Date.numeric
+
+
+Likelihood Ratio Test P-values:
+               P-value
+sex            0.66751
+aged_C         0.00000
+HHwealth_quart 0.00729
+
+
+Covariates selected (P<0.1):
+                    P-value
+aged_C         1.798648e-08
+HHwealth_quart 7.291731e-03
+
+Likelihood Ratio Test P-values:
+               P-value
+sex            0.66751
+aged_C         0.00000
+HHwealth_quart 0.00729
+
+
+Covariates selected (P<0.1):
+                    P-value
+aged_C         1.798648e-08
+HHwealth_quart 7.291731e-03
+
+Likelihood Ratio Test P-values:
+               P-value
+sex            0.66751
+aged_C         0.00000
+HHwealth_quart 0.00729
+
+
+Covariates selected (P<0.1):
+                    P-value
+aged_C         1.798648e-08
+HHwealth_quart 7.291731e-03
+
+Likelihood Ratio Test P-values:
+               P-value
+sex            0.66751
+aged_C         0.00000
+HHwealth_quart 0.00729
+
+
+Covariates selected (P<0.1):
+                    P-value
+aged_C         1.798648e-08
+HHwealth_quart 7.291731e-03
+
+Likelihood Ratio Test P-values:
+               P-value
+sex            0.66751
+aged_C         0.00000
+HHwealth_quart 0.00729
+
+
+Covariates selected (P<0.1):
+                    P-value
+aged_C         1.798648e-08
+HHwealth_quart 7.291731e-03
+
+Likelihood Ratio Test P-values:
+               P-value
+sex            0.66751
+aged_C         0.00000
+HHwealth_quart 0.00729
+
+
+Covariates selected (P<0.1):
+                    P-value
+aged_C         1.798648e-08
+HHwealth_quart 7.291731e-03
+
+Likelihood Ratio Test P-values:
+               P-value
+sex            0.66751
+aged_C         0.00000
+HHwealth_quart 0.00729
+
+
+Covariates selected (P<0.1):
+                    P-value
+aged_C         1.798648e-08
+HHwealth_quart 7.291731e-03
+Observations lost due to missing predictor or covariates: 18
+Observations lost due to missing predictor or covariates: 18
+Observations lost due to missing predictor or covariates: 18
+Observations lost due to missing predictor or covariates: 18
+Observations lost due to missing predictor or covariates: 18
+Observations lost due to missing predictor or covariates: 18
+Observations lost due to missing predictor or covariates: 18
+
+Likelihood Ratio Test P-values:
+               P-value
+sex            0.66751
+aged_C         0.00000
+HHwealth_quart 0.00729
+
+
+Covariates selected (P<0.1):
+                    P-value
+aged_C         1.798648e-08
+HHwealth_quart 7.291731e-03
+
+Likelihood Ratio Test P-values:
+               P-value
+sex            0.66751
+aged_C         0.00000
+HHwealth_quart 0.00729
+
+
+Covariates selected (P<0.1):
+                    P-value
+aged_C         1.798648e-08
+HHwealth_quart 7.291731e-03
+
+Likelihood Ratio Test P-values:
+
+Likelihood Ratio Test P-values:
+               P-value
+sex            0.66751
+aged_C         0.00000
+HHwealth_quart 0.00729
+
+
+Covariates selected (P<0.1):
+                    P-value
+aged_C         1.798648e-08
+HHwealth_quart 7.291731e-03
+               P-value
+sex            0.66751
+aged_C         0.00000
+HHwealth_quart 0.00729
+
+
+Covariates selected (P<0.1):
+                    P-value
+aged_C         1.798648e-08
+HHwealth_quart 7.291731e-03
+
+Likelihood Ratio Test P-values:
+               P-value
+sex            0.66751
+aged_C         0.00000
+HHwealth_quart 0.00729
+
+
+Covariates selected (P<0.1):
+                    P-value
+aged_C         1.798648e-08
+HHwealth_quart 7.291731e-03
+
+Likelihood Ratio Test P-values:
+               P-value
+sex            0.66751
+aged_C         0.00000
+HHwealth_quart 0.00729
+
+
+Covariates selected (P<0.1):
+                    P-value
+aged_C         1.798648e-08
+HHwealth_quart 7.291731e-03
+Observations lost due to missing predictor or covariates: 18
+
+Likelihood Ratio Test P-values:
+               P-value
+sex            0.66751
+aged_C         0.00000
+HHwealth_quart 0.00729
+
+
+Covariates selected (P<0.1):
+                    P-value
+aged_C         1.798648e-08
+HHwealth_quart 7.291731e-03
+Observations lost due to missing predictor or covariates: 18
+
+Likelihood Ratio Test P-values:
+
+Likelihood Ratio Test P-values:
+               P-value
+sex            0.66751
+aged_C         0.00000
+HHwealth_quart 0.00729
+
+
+Covariates selected (P<0.1):
+                    P-value
+aged_C         1.798648e-08
+HHwealth_quart 7.291731e-03
+               P-value
+sex            0.66751
+aged_C         0.00000
+HHwealth_quart 0.00729
+
+
+Covariates selected (P<0.1):
+                    P-value
+aged_C         1.798648e-08
+HHwealth_quart 7.291731e-03
+
+Likelihood Ratio Test P-values:
+               P-value
+sex            0.66751
+aged_C         0.00000
+HHwealth_quart 0.00729
+
+
+Covariates selected (P<0.1):
+                    P-value
+aged_C         1.798648e-08
+HHwealth_quart 7.291731e-03
+
+Likelihood Ratio Test P-values:
+               P-value
+sex            0.66751
+aged_C         0.00000
+HHwealth_quart 0.00729
+
+
+Covariates selected (P<0.1):
+                    P-value
+aged_C         1.798648e-08
+HHwealth_quart 7.291731e-03
+Observations lost due to missing predictor or covariates: 18
+Observations lost due to missing predictor or covariates: 18
+Observations lost due to missing predictor or covariates: 18
+Observations lost due to missing predictor or covariates: 18
+Observations lost due to missing predictor or covariates: 18
+
+Likelihood Ratio Test P-values:
+               P-value
+sex            0.66751
+aged_C         0.00000
+HHwealth_quart 0.00729
+
+
+Covariates selected (P<0.1):
+                    P-value
+aged_C         1.798648e-08
+HHwealth_quart 7.291731e-03
+Observations lost due to missing predictor or covariates: 18
+Observations lost due to missing predictor or covariates: 18
+Observations lost due to missing predictor or covariates: 18
+Observations lost due to missing predictor or covariates: 18
+
+Likelihood Ratio Test P-values:
+               P-value
+sex            0.66751
+aged_C         0.00000
+HHwealth_quart 0.00729
+
+
+Covariates selected (P<0.1):
+                    P-value
+aged_C         1.798648e-08
+HHwealth_quart 7.291731e-03
+Observations lost due to missing predictor or covariates: 18
+Observations lost due to missing predictor or covariates: 18
+[1] "Non-spatial gam fit: diar7d ~ temp_weekavg_2weeklag_median"
+
+Family: poisson 
+Link function: log 
+
+Formula:
+diar7d ~ temp_weekavg_2weeklag_median + s(aged_C, bs = "cs") + 
+    HHwealth_quart
+<environment: 0x10e175d8>
+
+Parametric coefficients:
+                                         Estimate Std. Error z value Pr(>|z|)
+(Intercept)                              -3.04582    0.11657 -26.129  < 2e-16
+temp_weekavg_2weeklag_medianabove median  0.27737    0.10467   2.650  0.00805
+HHwealth_quartWealth Q2                   0.02426    0.14021   0.173  0.86264
+HHwealth_quartWealth Q3                  -0.31581    0.15318  -2.062  0.03924
+HHwealth_quartWealth Q4                  -0.26074    0.15360  -1.698  0.08960
+                                            
+(Intercept)                              ***
+temp_weekavg_2weeklag_medianabove median ** 
+HHwealth_quartWealth Q2                     
+HHwealth_quartWealth Q3                  *  
+HHwealth_quartWealth Q4                  .  
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Approximate significance of smooth terms:
+            edf Ref.df Chi.sq p-value    
+s(aged_C) 1.798      9  34.72  <2e-16 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+R-sq.(adj) =  0.0068   
+glmer.ML = 2140.2  Scale est. = 1         n = 7302
+[1] "Non-spatial gam fit: diar7d ~ temp_weekavg_1weeklag_median"
+
+Family: poisson 
+Link function: log 
+
+Formula:
+diar7d ~ temp_weekavg_1weeklag_median + s(aged_C, bs = "cs") + 
+    HHwealth_quart
+<environment: 0x10e19328>
+
+Parametric coefficients:
+                                         Estimate Std. Error z value Pr(>|z|)
+(Intercept)                              -3.07795    0.12065 -25.511  < 2e-16
+temp_weekavg_1weeklag_medianabove median  0.31649    0.10754   2.943  0.00325
+HHwealth_quartWealth Q2                   0.02278    0.13956   0.163  0.87033
+HHwealth_quartWealth Q3                  -0.31234    0.15252  -2.048  0.04058
+HHwealth_quartWealth Q4                  -0.26003    0.15301  -1.699  0.08924
+                                            
+(Intercept)                              ***
+temp_weekavg_1weeklag_medianabove median ** 
+HHwealth_quartWealth Q2                     
+HHwealth_quartWealth Q3                  *  
+HHwealth_quartWealth Q4                  .  
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Approximate significance of smooth terms:
+            edf Ref.df Chi.sq p-value    
+s(aged_C) 1.769      9  34.84  <2e-16 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+R-sq.(adj) =  0.007   
+glmer.ML = 2148.2  Scale est. = 1         n = 7302
+[1] "Non-spatial gam fit: diar7d ~ temp_monthmin_2weeklag_C"
+
+Family: poisson 
+Link function: log 
+
+Formula:
+diar7d ~ s(temp_monthmin_2weeklag_C, bs = "cs") + s(aged_C, bs = "cs") + 
+    HHwealth_quart
+<environment: 0x10c4a728>
+
+Parametric coefficients:
+                        Estimate Std. Error z value Pr(>|z|)    
+(Intercept)             -2.90366    0.09989 -29.069   <2e-16 ***
+HHwealth_quartWealth Q2  0.03362    0.13913   0.242   0.8091    
+HHwealth_quartWealth Q3 -0.31977    0.15200  -2.104   0.0354 *  
+HHwealth_quartWealth Q4 -0.28708    0.15323  -1.874   0.0610 .  
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Approximate significance of smooth terms:
+                              edf Ref.df Chi.sq p-value    
+s(temp_monthmin_2weeklag_C) 4.698      9  50.72  <2e-16 ***
+s(aged_C)                   1.663      9  29.47  <2e-16 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+R-sq.(adj) =  0.0144   
+glmer.ML = 2123.9  Scale est. = 1         n = 7302
+[1] "Non-spatial gam fit: diar7d ~ temp_monthavg_1weeklag_C"
+
+Family: poisson 
+Link function: log 
+
+Formula:
+diar7d ~ s(temp_monthavg_1weeklag_C, bs = "cs") + s(aged_C, bs = "cs") + 
+    HHwealth_quart
+<environment: 0x10b22b78>
+
+Parametric coefficients:
+                        Estimate Std. Error z value Pr(>|z|)    
+(Intercept)             -2.92319    0.10082 -28.994   <2e-16 ***
+HHwealth_quartWealth Q2  0.04392    0.13987   0.314   0.7535    
+HHwealth_quartWealth Q3 -0.30597    0.15276  -2.003   0.0452 *  
+HHwealth_quartWealth Q4 -0.27782    0.15347  -1.810   0.0702 .  
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Approximate significance of smooth terms:
+                              edf Ref.df Chi.sq p-value    
+s(temp_monthavg_1weeklag_C) 5.676      9  51.76  <2e-16 ***
+s(aged_C)                   1.766      9  28.09  <2e-16 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+R-sq.(adj) =  0.0133   
+glmer.ML = 2106.4  Scale est. = 1         n = 7302
+[1] "Non-spatial gam fit: diar7d ~ temp_monthavg_2weeklag_C"
+
+Family: poisson 
+Link function: log 
+
+Formula:
+diar7d ~ s(temp_monthavg_2weeklag_C, bs = "cs") + s(aged_C, bs = "cs") + 
+    HHwealth_quart
+<environment: 0x10b5a0d8>
+
+Parametric coefficients:
+                        Estimate Std. Error z value Pr(>|z|)    
+(Intercept)             -2.91143    0.10004 -29.101   <2e-16 ***
+HHwealth_quartWealth Q2  0.03802    0.13883   0.274   0.7842    
+HHwealth_quartWealth Q3 -0.30880    0.15176  -2.035   0.0419 *  
+HHwealth_quartWealth Q4 -0.27892    0.15241  -1.830   0.0672 .  
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Approximate significance of smooth terms:
+                              edf Ref.df Chi.sq p-value    
+s(temp_monthavg_2weeklag_C) 5.081      9  57.39  <2e-16 ***
+s(aged_C)                   1.762      9  28.00  <2e-16 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+R-sq.(adj) =  0.015   
+glmer.ML = 2122.2  Scale est. = 1         n = 7302
+[1] "Non-spatial gam fit: diar7d ~ temp_monthmin_1weeklag_C"
+
+Family: poisson 
+Link function: log 
+
+Formula:
+diar7d ~ s(temp_monthmin_1weeklag_C, bs = "cs") + s(aged_C, bs = "cs") + 
+    HHwealth_quart
+<environment: 0x10c4e2f8>
+
+Parametric coefficients:
+                        Estimate Std. Error z value Pr(>|z|)    
+(Intercept)             -2.92285    0.10046 -29.095   <2e-16 ***
+HHwealth_quartWealth Q2  0.04615    0.13947   0.331   0.7407    
+HHwealth_quartWealth Q3 -0.30470    0.15243  -1.999   0.0456 *  
+HHwealth_quartWealth Q4 -0.26701    0.15352  -1.739   0.0820 .  
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Approximate significance of smooth terms:
+                              edf Ref.df Chi.sq p-value    
+s(temp_monthmin_1weeklag_C) 4.912      9  52.83  <2e-16 ***
+s(aged_C)                   1.635      9  28.90  <2e-16 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+R-sq.(adj) =  0.0144   
+glmer.ML = 2112.2  Scale est. = 1         n = 7302
+[1] "Non-spatial gam fit: diar7d ~ temp_weekavg_2weeklag_C"
+
+Family: poisson 
+Link function: log 
+
+Formula:
+diar7d ~ s(temp_weekavg_2weeklag_C, bs = "cs") + s(aged_C, bs = "cs") + 
+    HHwealth_quart
+<environment: 0x10cc6138>
+
+Parametric coefficients:
+                        Estimate Std. Error z value Pr(>|z|)    
+(Intercept)             -2.89259    0.09988 -28.959   <2e-16 ***
+HHwealth_quartWealth Q2  0.02424    0.13936   0.174   0.8619    
+HHwealth_quartWealth Q3 -0.31240    0.15229  -2.051   0.0402 *  
+HHwealth_quartWealth Q4 -0.26245    0.15280  -1.718   0.0859 .  
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Approximate significance of smooth terms:
+                             edf Ref.df Chi.sq  p-value    
+s(temp_weekavg_2weeklag_C) 1.504      9  19.35 1.19e-05 ***
+s(aged_C)                  1.828      9  33.90  < 2e-16 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+R-sq.(adj) =  0.00861   
+glmer.ML = 2144.1  Scale est. = 1         n = 7302
+[1] "Non-spatial gam fit: diar7d ~ temp_monthmax_1weeklag_C"
+
+Family: poisson 
+Link function: log 
+
+Formula:
+diar7d ~ s(temp_monthmax_1weeklag_C, bs = "cs") + s(aged_C, bs = "cs") + 
+    HHwealth_quart
+<environment: 0x10c5b378>
+
+Parametric coefficients:
+                        Estimate Std. Error z value Pr(>|z|)    
+(Intercept)             -2.89179    0.09961 -29.032   <2e-16 ***
+HHwealth_quartWealth Q2  0.03145    0.13879   0.227   0.8207    
+HHwealth_quartWealth Q3 -0.30295    0.15173  -1.997   0.0459 *  
+HHwealth_quartWealth Q4 -0.25001    0.15224  -1.642   0.1006    
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Approximate significance of smooth terms:
+                              edf Ref.df Chi.sq  p-value    
+s(temp_monthmax_1weeklag_C) 1.214      9  16.91 2.51e-05 ***
+s(aged_C)                   1.840      9  33.93  < 2e-16 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+R-sq.(adj) =  0.00835   
+glmer.ML = 2155.6  Scale est. = 1         n = 7302
+[1] "Non-spatial gam fit: diar7d ~ temp_weekavg_1weeklag_C"
+
+Family: poisson 
+Link function: log 
+
+Formula:
+diar7d ~ s(temp_weekavg_1weeklag_C, bs = "cs") + s(aged_C, bs = "cs") + 
+    HHwealth_quart
+<environment: 0x10cc2138>
+
+Parametric coefficients:
+                        Estimate Std. Error z value Pr(>|z|)    
+(Intercept)             -2.89472    0.09979 -29.008   <2e-16 ***
+HHwealth_quartWealth Q2  0.02681    0.13929   0.192   0.8474    
+HHwealth_quartWealth Q3 -0.30649    0.15227  -2.013   0.0441 *  
+HHwealth_quartWealth Q4 -0.25294    0.15277  -1.656   0.0978 .  
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Approximate significance of smooth terms:
+                             edf Ref.df Chi.sq  p-value    
+s(temp_weekavg_1weeklag_C) 1.087      9  14.37 8.04e-05 ***
+s(aged_C)                  1.786      9  33.89  < 2e-16 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+R-sq.(adj) =  0.00764   
+glmer.ML = 2147.1  Scale est. = 1         n = 7302
+[1] "Non-spatial gam fit: diar7d ~ temp_monthmin_3weeklag_C"
+
+Family: poisson 
+Link function: log 
+
+Formula:
+diar7d ~ s(temp_monthmin_3weeklag_C, bs = "cs") + s(aged_C, bs = "cs") + 
+    HHwealth_quart
+<environment: 0x10c54c88>
+
+Parametric coefficients:
+                        Estimate Std. Error z value Pr(>|z|)    
+(Intercept)             -2.88401    0.09978 -28.902   <2e-16 ***
+HHwealth_quartWealth Q2  0.01497    0.13946   0.107   0.9145    
+HHwealth_quartWealth Q3 -0.33332    0.15232  -2.188   0.0287 *  
+HHwealth_quartWealth Q4 -0.30616    0.15314  -1.999   0.0456 *  
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Approximate significance of smooth terms:
+                              edf Ref.df Chi.sq p-value    
+s(temp_monthmin_3weeklag_C) 3.781      9  37.58  <2e-16 ***
+s(aged_C)                   1.765      9  32.49  <2e-16 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+R-sq.(adj) =  0.0127   
+glmer.ML = 2132.8  Scale est. = 1         n = 7302
+[1] "Non-spatial gam fit: diar7d ~ temp_weekmax_2weeklag_C"
+
+Family: poisson 
+Link function: log 
+
+Formula:
+diar7d ~ s(temp_weekmax_2weeklag_C, bs = "cs") + s(aged_C, bs = "cs") + 
+    HHwealth_quart
+<environment: 0x10deb5a8>
+
+Parametric coefficients:
+                        Estimate Std. Error z value Pr(>|z|)    
+(Intercept)             -2.89799    0.10001 -28.978   <2e-16 ***
+HHwealth_quartWealth Q2  0.02714    0.13947   0.195   0.8457    
+HHwealth_quartWealth Q3 -0.30640    0.15242  -2.010   0.0444 *  
+HHwealth_quartWealth Q4 -0.25266    0.15295  -1.652   0.0985 .  
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Approximate significance of smooth terms:
+                             edf Ref.df Chi.sq  p-value    
+s(temp_weekmax_2weeklag_C) 1.368      9  17.27 2.96e-05 ***
+s(aged_C)                  1.811      9  34.41  < 2e-16 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+R-sq.(adj) =  0.00819   
+glmer.ML = 2142.5  Scale est. = 1         n = 7302
+[1] "Non-spatial gam fit: diar7d ~ temp_monthavg_3weeklag_C"
+
+Family: poisson 
+Link function: log 
+
+Formula:
+diar7d ~ s(temp_monthavg_3weeklag_C, bs = "cs") + s(aged_C, bs = "cs") + 
+    HHwealth_quart
+<environment: 0x10c248f8>
+
+Parametric coefficients:
+                        Estimate Std. Error z value Pr(>|z|)    
+(Intercept)             -2.88741    0.09928 -29.085   <2e-16 ***
+HHwealth_quartWealth Q2  0.02293    0.13829   0.166   0.8683    
+HHwealth_quartWealth Q3 -0.31404    0.15128  -2.076   0.0379 *  
+HHwealth_quartWealth Q4 -0.28553    0.15183  -1.881   0.0600 .  
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Approximate significance of smooth terms:
+                              edf Ref.df Chi.sq p-value    
+s(temp_monthavg_3weeklag_C) 4.348      9  45.73  <2e-16 ***
+s(aged_C)                   1.794      9  30.77  <2e-16 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+R-sq.(adj) =  0.0139   
+glmer.ML = 2145.8  Scale est. = 1         n = 7302
+[1] "Non-spatial gam fit: diar7d ~ temp_monthmax_3weeklag_C"
+
+Family: poisson 
+Link function: log 
+
+Formula:
+diar7d ~ s(temp_monthmax_3weeklag_C, bs = "cs") + s(aged_C, bs = "cs") + 
+    HHwealth_quart
+<environment: 0x10c91e78>
+
+Parametric coefficients:
+                        Estimate Std. Error z value Pr(>|z|)    
+(Intercept)             -2.89808    0.09943 -29.146   <2e-16 ***
+HHwealth_quartWealth Q2  0.02803    0.13795   0.203   0.8390    
+HHwealth_quartWealth Q3 -0.30742    0.15098  -2.036   0.0417 *  
+HHwealth_quartWealth Q4 -0.26068    0.15132  -1.723   0.0849 .  
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Approximate significance of smooth terms:
+                              edf Ref.df Chi.sq p-value    
+s(temp_monthmax_3weeklag_C) 5.073      9  44.01  <2e-16 ***
+s(aged_C)                   1.803      9  32.26  <2e-16 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+R-sq.(adj) =  0.0126   
+glmer.ML = 2146.5  Scale est. = 1         n = 7302
+[1] "Non-spatial gam fit: diar7d ~ temp_weekmin_1weeklag_C"
+
+Family: poisson 
+Link function: log 
+
+Formula:
+diar7d ~ s(temp_weekmin_1weeklag_C, bs = "cs") + s(aged_C, bs = "cs") + 
+    HHwealth_quart
+<environment: 0x10cf09c8>
+
+Parametric coefficients:
+                        Estimate Std. Error z value Pr(>|z|)    
+(Intercept)             -2.89271    0.09991 -28.953   <2e-16 ***
+HHwealth_quartWealth Q2  0.02413    0.13960   0.173   0.8628    
+HHwealth_quartWealth Q3 -0.31024    0.15256  -2.034   0.0420 *  
+HHwealth_quartWealth Q4 -0.26035    0.15305  -1.701   0.0889 .  
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Approximate significance of smooth terms:
+                             edf Ref.df Chi.sq  p-value    
+s(temp_weekmin_1weeklag_C) 1.487      9  14.92 7.82e-05 ***
+s(aged_C)                  1.799      9  33.40  < 2e-16 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+R-sq.(adj) =  0.0078   
+glmer.ML = 2144.2  Scale est. = 1         n = 7302
+[1] "Non-spatial gam fit: diar7d ~ temp_weekmax_3weeklag_C"
+
+Family: poisson 
+Link function: log 
+
+Formula:
+diar7d ~ s(temp_weekmax_3weeklag_C, bs = "cs") + s(aged_C, bs = "cs") + 
+    HHwealth_quart
+<environment: 0x10dfbe88>
+
+Parametric coefficients:
+                        Estimate Std. Error z value Pr(>|z|)    
+(Intercept)             -2.88802    0.09945 -29.041   <2e-16 ***
+HHwealth_quartWealth Q2  0.02991    0.13842   0.216   0.8289    
+HHwealth_quartWealth Q3 -0.30580    0.15132  -2.021   0.0433 *  
+HHwealth_quartWealth Q4 -0.26572    0.15174  -1.751   0.0799 .  
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Approximate significance of smooth terms:
+                             edf Ref.df Chi.sq p-value    
+s(temp_weekmax_3weeklag_C) 1.975      9  28.62  <2e-16 ***
+s(aged_C)                  1.844      9  34.34  <2e-16 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+R-sq.(adj) =  0.0103   
+glmer.ML = 2155.9  Scale est. = 1         n = 7302
+[1] "Non-spatial gam fit: diar7d ~ temp_weekavg_3weeklag_C"
+
+Family: poisson 
+Link function: log 
+
+Formula:
+diar7d ~ s(temp_weekavg_3weeklag_C, bs = "cs") + s(aged_C, bs = "cs") + 
+    HHwealth_quart
+<environment: 0x10cca138>
+
+Parametric coefficients:
+                        Estimate Std. Error z value Pr(>|z|)    
+(Intercept)             -2.88630    0.09949 -29.010   <2e-16 ***
+HHwealth_quartWealth Q2  0.02359    0.13864   0.170   0.8649    
+HHwealth_quartWealth Q3 -0.31300    0.15151  -2.066   0.0388 *  
+HHwealth_quartWealth Q4 -0.27197    0.15196  -1.790   0.0735 .  
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Approximate significance of smooth terms:
+                             edf Ref.df Chi.sq p-value    
+s(temp_weekavg_3weeklag_C) 1.914      9  28.23  <2e-16 ***
+s(aged_C)                  1.827      9  34.22  <2e-16 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+R-sq.(adj) =  0.0102   
+glmer.ML = 2151.7  Scale est. = 1         n = 7302
+[1] "Non-spatial gam fit: diar7d ~ temp_weekmin_2weeklag_C"
+
+Family: poisson 
+Link function: log 
+
+Formula:
+diar7d ~ s(temp_weekmin_2weeklag_C, bs = "cs") + s(aged_C, bs = "cs") + 
+    HHwealth_quart
+<environment: 0x10d18ed8>
+
+Parametric coefficients:
+                        Estimate Std. Error z value Pr(>|z|)    
+(Intercept)             -2.91208    0.10031 -29.030   <2e-16 ***
+HHwealth_quartWealth Q2  0.03458    0.13947   0.248   0.8042    
+HHwealth_quartWealth Q3 -0.30637    0.15242  -2.010   0.0444 *  
+HHwealth_quartWealth Q4 -0.26013    0.15318  -1.698   0.0895 .  
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Approximate significance of smooth terms:
+                             edf Ref.df Chi.sq p-value    
+s(temp_weekmin_2weeklag_C) 6.064      9  38.42  <2e-16 ***
+s(aged_C)                  1.833      9  31.64  <2e-16 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+R-sq.(adj) =  0.0116   
+glmer.ML = 2125.3  Scale est. = 1         n = 7302
+[1] "Non-spatial gam fit: diar7d ~ temp_monthmax_2weeklag_C"
+
+Family: poisson 
+Link function: log 
+
+Formula:
+diar7d ~ s(temp_monthmax_2weeklag_C, bs = "cs") + s(aged_C, bs = "cs") + 
+    HHwealth_quart
+<environment: 0x10c749d8>
+
+Parametric coefficients:
+                        Estimate Std. Error z value Pr(>|z|)    
+(Intercept)             -2.91170    0.10032 -29.025   <2e-16 ***
+HHwealth_quartWealth Q2  0.03403    0.13928   0.244   0.8070    
+HHwealth_quartWealth Q3 -0.30569    0.15238  -2.006   0.0448 *  
+HHwealth_quartWealth Q4 -0.25078    0.15281  -1.641   0.1008    
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Approximate significance of smooth terms:
+                              edf Ref.df Chi.sq p-value    
+s(temp_monthmax_2weeklag_C) 5.384      9  37.53  <2e-16 ***
+s(aged_C)                   1.832      9  31.36  <2e-16 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+R-sq.(adj) =  0.0116   
+glmer.ML = 2128.3  Scale est. = 1         n = 7302
+[1] "Non-spatial gam fit: diar7d ~ temp_weekmin_3weeklag_C"
+
+Family: poisson 
+Link function: log 
+
+Formula:
+diar7d ~ s(temp_weekmin_3weeklag_C, bs = "cs") + s(aged_C, bs = "cs") + 
+    HHwealth_quart
+<environment: 0x10d1c918>
+
+Parametric coefficients:
+                        Estimate Std. Error z value Pr(>|z|)    
+(Intercept)             -2.88606    0.09967 -28.955   <2e-16 ***
+HHwealth_quartWealth Q2  0.01925    0.13919   0.138   0.8900    
+HHwealth_quartWealth Q3 -0.32278    0.15208  -2.122   0.0338 *  
+HHwealth_quartWealth Q4 -0.27573    0.15260  -1.807   0.0708 .  
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Approximate significance of smooth terms:
+                             edf Ref.df Chi.sq  p-value    
+s(temp_weekmin_3weeklag_C) 1.517      9  22.33 1.85e-06 ***
+s(aged_C)                  1.818      9  34.09  < 2e-16 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+R-sq.(adj) =  0.00908   
+glmer.ML = 2145.2  Scale est. = 1         n = 7302
+[1] "Non-spatial gam fit: diar7d ~ temp_weekmax_1weeklag_C"
+
+Family: poisson 
+Link function: log 
+
+Formula:
+diar7d ~ s(temp_weekmax_1weeklag_C, bs = "cs") + s(aged_C, bs = "cs") + 
+    HHwealth_quart
+<environment: 0x10de74a8>
+
+Parametric coefficients:
+                        Estimate Std. Error z value Pr(>|z|)    
+(Intercept)             -2.90079    0.09993 -29.027   <2e-16 ***
+HHwealth_quartWealth Q2  0.03085    0.13940   0.221   0.8249    
+HHwealth_quartWealth Q3 -0.29993    0.15242  -1.968   0.0491 *  
+HHwealth_quartWealth Q4 -0.24605    0.15293  -1.609   0.1077    
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Approximate significance of smooth terms:
+                             edf Ref.df Chi.sq  p-value    
+s(temp_weekmax_1weeklag_C) 1.042      9  14.05 7.75e-05 ***
+s(aged_C)                  1.775      9  34.25  < 2e-16 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+R-sq.(adj) =  0.00753   
+glmer.ML = 2144.2  Scale est. = 1         n = 7302
+[1] "No residual spatial autocorrelation. Saving non-spatial model."
+[1] "Saving results"
+Trycatch is finished.
+[1] "No residual spatial autocorrelation. Saving non-spatial model."
+[1] "Saving results"
+Trycatch is finished.
+[1] "No residual spatial autocorrelation. Saving non-spatial model."
+[1] "Saving results"
+Trycatch is finished.
+[1] "No residual spatial autocorrelation. Saving non-spatial model."
+[1] "Saving results"
+Trycatch is finished.
+[1] "No residual spatial autocorrelation. Saving non-spatial model."
+[1] "Saving results"
+Trycatch is finished.
+[1] "No residual spatial autocorrelation. Saving non-spatial model."
+[1] "Saving results"
+Trycatch is finished.
+[1] "No residual spatial autocorrelation. Saving non-spatial model."
+[1] "Saving results"
+Trycatch is finished.
+[1] "No residual spatial autocorrelation. Saving non-spatial model."
+[1] "Saving results"
+Trycatch is finished.
+[1] "No residual spatial autocorrelation. Saving non-spatial model."
+[1] "Saving results"
+Trycatch is finished.
+[1] "Residual spatial autocorrelation is present. Proceeding with spatial model."
+[1] "No residual spatial autocorrelation. Saving non-spatial model."
+[1] "Saving results"
+Trycatch is finished.
+[1] "No residual spatial autocorrelation. Saving non-spatial model."
+[1] "Saving results"
+Trycatch is finished.
+[1] "No residual spatial autocorrelation. Saving non-spatial model."
+[1] "Saving results"
+Trycatch is finished.
+[1] "No residual spatial autocorrelation. Saving non-spatial model."
+[1] "Saving results"
+Trycatch is finished.
+[1] "No residual spatial autocorrelation. Saving non-spatial model."
+[1] "Saving results"
+Trycatch is finished.
+[1] "No residual spatial autocorrelation. Saving non-spatial model."
+[1] "Saving results"
+Trycatch is finished.
+[1] "No residual spatial autocorrelation. Saving non-spatial model."
+[1] "Saving results"
+Trycatch is finished.
+[1] "No residual spatial autocorrelation. Saving non-spatial model."
+[1] "Saving results"
+Trycatch is finished.
+[1] "No residual spatial autocorrelation. Saving non-spatial model."
+[1] "Saving results"
+Trycatch is finished.
+[1] "No residual spatial autocorrelation. Saving non-spatial model."
+[1] "Saving results"
+Trycatch is finished.
+[1] "Spatial gam fit"
+
+Family: poisson 
+Link function: log 
+
+Formula:
+diar7d ~ s(temp_monthavg_2weeklag_C, bs = "cs") + s(aged_C, bs = "cs") + 
+    HHwealth_quart + s(qgpslong, qgpslat, bs = "tp")
+<environment: 0x10b5a0d8>
+
+Parametric coefficients:
+                        Estimate Std. Error z value Pr(>|z|)    
+(Intercept)             -2.92623    0.10268 -28.497   <2e-16 ***
+HHwealth_quartWealth Q2  0.04321    0.13965   0.309   0.7570    
+HHwealth_quartWealth Q3 -0.30319    0.15497  -1.956   0.0504 .  
+HHwealth_quartWealth Q4 -0.25917    0.15836  -1.637   0.1017    
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Approximate significance of smooth terms:
+                              edf Ref.df Chi.sq  p-value    
+s(temp_monthavg_2weeklag_C) 5.298  9.000  55.31  < 2e-16 ***
+s(aged_C)                   1.733  9.000  26.21 2.39e-07 ***
+s(qgpslong,qgpslat)         6.586  6.586  11.62    0.137    
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+R-sq.(adj) =  0.0159   
+glmer.ML = 2110.2  Scale est. = 1         n = 7302
+[1] "Even though residual spatial autocorrelation was present, spatial GAM has larger AIC than non-spatial GAM. Check model."
+[1] "No residual spatial autocorrelation. Saving non-spatial model."
+[1] "Saving results"
+Trycatch is finished.
+[[1]]
+NULL
+
+[[2]]
+NULL
+
+[[3]]
+NULL
+
+[[4]]
+NULL
+
+[[5]]
+NULL
+
+[[6]]
+NULL
+
+[[7]]
+NULL
+
+[[8]]
+NULL
+
+[[9]]
+NULL
+
+[[10]]
+NULL
+
+[[11]]
+NULL
+
+[[12]]
+NULL
+
+[[13]]
+NULL
+
+[[14]]
+NULL
+
+[[15]]
+NULL
+
+[[16]]
+NULL
+
+[[17]]
+NULL
+
+[[18]]
+NULL
+
+[[19]]
+NULL
+
+[[20]]
+NULL
+
+> 
+> stopImplicitCluster()
+> 
+> 
+> 
+> proc.time()
+     user    system   elapsed 
+28055.295  3756.710  6394.019 

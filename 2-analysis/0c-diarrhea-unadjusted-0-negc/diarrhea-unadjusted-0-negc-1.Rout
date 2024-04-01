@@ -1,0 +1,1970 @@
+
+R version 4.0.2 (2020-06-22) -- "Taking Off Again"
+Copyright (C) 2020 The R Foundation for Statistical Computing
+Platform: x86_64-pc-linux-gnu (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> #######################################
+> # WASH Benefits Bangladesh  
+> # Hydrometeorological risk factors for diarrhea and enteropathogens
+> 
+> # GAM analysis for negative control (bruises)
+> #######################################
+> 
+> rm(list=ls())
+> 
+> 
+> # configure directories, load libraries and base functions
+> source(paste0(here::here(), "/0-config.R"))
+here() starts at /oak/stanford/groups/relman/users/jgrembi/wash/WBB-weather-diarrhea-pathogens
+
+Attaching package: ‘dplyr’
+
+The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+Loading required package: ggplot2
+
+Attaching package: ‘reshape2’
+
+The following object is masked from ‘package:tidyr’:
+
+    smiths
+
+
+Attaching package: ‘gridExtra’
+
+The following object is masked from ‘package:dplyr’:
+
+    combine
+
+Welcome to the washb package
+Version: 0.2.2
+Created on 2018-11-07
+
+This software was developed with funding from the
+Bill & Melinda Gates Foundation (grant number OPPGD759).
+
+The package's reference manual and vignette are also online:
+https://ben-arnold.github.io/washb
+
+
+Attaching package: ‘lubridate’
+
+The following objects are masked from ‘package:base’:
+
+    date, intersect, setdiff, union
+
+Loading required package: nlme
+
+Attaching package: ‘nlme’
+
+The following object is masked from ‘package:dplyr’:
+
+    collapse
+
+This is mgcv 1.8-40. For overview type 'help("mgcv-package")'.
+Loading required package: Matrix
+
+Attaching package: ‘Matrix’
+
+The following objects are masked from ‘package:tidyr’:
+
+    expand, pack, unpack
+
+Loading required package: lme4
+
+Attaching package: ‘lme4’
+
+The following object is masked from ‘package:nlme’:
+
+    lmList
+
+This is gamm4 0.2-6
+
+This is DHARMa 0.4.5. For overview type '?DHARMa'. For recent changes, type news(package = 'DHARMa')
+Loading required package: viridisLite
+Loading required package: lattice
+
+Attaching package: ‘caret’
+
+The following object is masked from ‘package:purrr’:
+
+    lift
+
+
+Attaching package: ‘wrapr’
+
+The following objects are masked from ‘package:Matrix’:
+
+    pack, unpack
+
+The following object is masked from ‘package:mgcv’:
+
+    %.%
+
+The following objects are masked from ‘package:tidyr’:
+
+    pack, unpack
+
+The following object is masked from ‘package:dplyr’:
+
+    coalesce
+
+── Attaching packages ─────────────────────────────────────── tidyverse 1.3.1 ──
+✔ tibble  3.1.7     ✔ forcats 0.5.1
+✔ readr   1.4.0     
+── Conflicts ────────────────────────────────────────── tidyverse_conflicts() ──
+✖ lubridate::as.difftime() masks base::as.difftime()
+✖ wrapr::coalesce()        masks dplyr::coalesce()
+✖ nlme::collapse()         masks dplyr::collapse()
+✖ gridExtra::combine()     masks dplyr::combine()
+✖ lubridate::date()        masks base::date()
+✖ Matrix::expand()         masks tidyr::expand()
+✖ dplyr::filter()          masks stats::filter()
+✖ tibble::has_name()       masks assertthat::has_name()
+✖ lubridate::intersect()   masks base::intersect()
+✖ dplyr::lag()             masks stats::lag()
+✖ caret::lift()            masks purrr::lift()
+✖ wrapr::pack()            masks Matrix::pack(), tidyr::pack()
+✖ lubridate::setdiff()     masks base::setdiff()
+✖ lubridate::union()       masks base::union()
+✖ wrapr::unpack()          masks Matrix::unpack(), tidyr::unpack()
+✖ tibble::view()           masks wrapr::view()
+
+Attaching package: ‘kableExtra’
+
+The following object is masked from ‘package:dplyr’:
+
+    group_rows
+
+Loading required package: foreach
+
+Attaching package: ‘foreach’
+
+The following objects are masked from ‘package:purrr’:
+
+    accumulate, when
+
+Loading required package: iterators
+Loading required package: parallel
+Loading required package: rngtools
+
+Attaching package: ‘magrittr’
+
+The following object is masked from ‘package:purrr’:
+
+    set_names
+
+The following object is masked from ‘package:tidyr’:
+
+    extract
+
+
+Attaching package: ‘cowplot’
+
+The following object is masked from ‘package:lubridate’:
+
+    stamp
+
+> 
+> d_diarrhea = readRDS(paste0(clean_offset_data_dir, clean_diarr_merged_offset))
+> 
+> #filter for intervention = 0
+> d_diarrhea = d_diarrhea %>% filter(intervention==0)
+> 
+> analysis = "diarrhea-unadjusted-0-negc"
+> 
+> diarrhea_outcomes = c("bruise7d")
+> 
+> #make table with one line for each outcome-risk factor pair
+> diarrhea_tbl = data.frame(outcome = rep(diarrhea_outcomes, length(risk_factors))) %>% 
++   arrange(outcome) %>% 
++   mutate(risk_factor = rep(risk_factors, length(diarrhea_outcomes))) %>%
++   filter(!grepl("0weeklag", risk_factor))
+> 
+> ## function to fit model, save results, run check script and produce fit checking output file.
+> fit_diarrhea_gam = function(diarrhea_tbl_row) {
++   print("Fitting GAM")
++   x <- fit_gam(df = d_diarrhea,
++                y = as.character(diarrhea_tbl_row[["outcome"]]),
++                a = as.character(diarrhea_tbl_row[["risk_factor"]]),
++                w = NULL,
++                family = "poisson")
++   print("Saving results")
++   saveRDS(x, paste0(sherlock_results_dir,
++                     "gam_outputs/", analysis, "/gam_",
++                     str_replace(diarrhea_tbl_row[["outcome"]],"\\.", "_"),
++                     "_0_",
++                     diarrhea_tbl_row[["risk_factor"]],
++                     ".RDS"))
++   # if(x$message %in% model_pass) {
++   #   print("Running check")
++   #   check_gam_fit(outcome = str_replace(diarrhea_tbl_row[["outcome"]], "\\.", "_"),
++   #                 risk_factor = diarrhea_tbl_row[["risk_factor"]],
++   #                 output_type = "pdf",
++   #                 analysis = analysis,
++   #                 plot = "only risk factor",
++   #                 results_dir = sherlock_results_dir)
++   #   gam_check_file_old_name = paste0(sherlock_results_dir, "gam_check/", analysis,"/gam_check_", diarrhea_tbl_row[["outcome"]], "_", diarrhea_tbl_row[["risk_factor"]], ".pdf")
++   #   gam_check_file_new_name = paste0(sherlock_results_dir, "gam_check/", analysis,"/gam_check_", diarrhea_tbl_row[["outcome"]],"_0_", diarrhea_tbl_row[["risk_factor"]], ".pdf")
++   #   file.rename(from = gam_check_file_old_name, to = gam_check_file_new_name)
++   # } else {
++   #   print("Skipping gam check because model not successful")
++   # }
++ }
+> 
+> 
+> nb_row=nrow(diarrhea_tbl)
+> print(nb_row)
+[1] 58
+> missing <- vector(mode='list', length=1)
+> 
+> try_fit_diarrhea_gam <- function(diarrhea_tbl_row) {
++   out <- tryCatch(
++     {
++       fit_diarrhea_gam(diarrhea_tbl_row = diarrhea_tbl_row)
++     },
++     error=function(cond) {
++       message("There was an error.")
++       message(cond)
++       return(NA)
++     },
++     finally = {
++       message("Trycatch is finished.")
++     }
++   )
++   return(out)
++ }
+> 
+> registerDoParallel(detectCores())
+> #for (i in (1:22)){
+> foreach(i=1:30) %dopar% {
++   print(diarrhea_tbl[i,])
++   if (diarrhea_tbl[i,2] %in% names(d_diarrhea)){
++     try_fit_diarrhea_gam(diarrhea_tbl_row = diarrhea_tbl[i,])
++   } else {
++     print("Error: missing outcome")
++   }
++ }
+   outcome              risk_factor
+1 bruise7d temp_monthavg_1weeklag_C
+[1] "Fitting GAM"
+   outcome              risk_factor
+2 bruise7d temp_monthavg_2weeklag_C
+[1] "Fitting GAM"
+   outcome              risk_factor
+3 bruise7d temp_monthavg_3weeklag_C
+[1] "Fitting GAM"
+   outcome              risk_factor
+4 bruise7d temp_monthmin_1weeklag_C
+[1] "Fitting GAM"
+Observations lost due to missing outcome: 741
+   outcome              risk_factor
+5 bruise7d temp_monthmin_2weeklag_C
+[1] "Fitting GAM"
+Observations lost due to missing outcome: 741
+   outcome              risk_factor
+6 bruise7d temp_monthmin_3weeklag_C
+Observations lost due to missing outcome: 741
+[1] "Fitting GAM"
+Observations lost due to missing outcome: 741
+   outcome              risk_factor
+7 bruise7d temp_monthmax_1weeklag_C
+[1] "Fitting GAM"
+Observations lost due to missing outcome: 741
+   outcome              risk_factor
+8 bruise7d temp_monthmax_2weeklag_C
+[1] "Fitting GAM"
+Observations lost due to missing outcome: 741
+   outcome              risk_factor
+9 bruise7d temp_monthmax_3weeklag_C
+[1] "Fitting GAM"
+Observations lost due to missing outcome: 741
+    outcome             risk_factor
+10 bruise7d temp_weekavg_1weeklag_C
+[1] "Fitting GAM"
+Observations lost due to missing outcome: 741
+    outcome             risk_factor
+11 bruise7d temp_weekavg_2weeklag_C
+[1] "Fitting GAM"
+Observations lost due to missing outcome: 741
+    outcome             risk_factor
+12 bruise7d temp_weekavg_3weeklag_C
+Observations lost due to missing outcome: 741
+[1] "Fitting GAM"
+    outcome             risk_factor
+13 bruise7d temp_weekmin_1weeklag_C
+[1] "Fitting GAM"
+Observations lost due to missing outcome: 741
+    outcome             risk_factor
+14 bruise7d temp_weekmin_2weeklag_C
+[1] "Fitting GAM"
+Observations lost due to missing outcome: 741
+    outcome             risk_factor
+15 bruise7d temp_weekmin_3weeklag_C
+[1] "Fitting GAM"
+Observations lost due to missing outcome: 741
+    outcome             risk_factor
+16 bruise7d temp_weekmax_1weeklag_C
+[1] "Fitting GAM"
+Observations lost due to missing outcome: 741
+    outcome             risk_factor
+17 bruise7d temp_weekmax_2weeklag_C
+[1] "Fitting GAM"
+Observations lost due to missing outcome: 741
+    outcome             risk_factor
+18 bruise7d temp_weekmax_3weeklag_C
+[1] "Fitting GAM"
+Observations lost due to missing outcome: 741
+Observations lost due to missing outcome: 741
+    outcome                  risk_factor
+19 bruise7d temp_weekavg_1weeklag_median
+[1] "Fitting GAM"
+    outcome                  risk_factor
+20 bruise7d temp_weekavg_2weeklag_median
+[1] "Fitting GAM"
+Observations lost due to missing outcome: 741
+    outcome                  risk_factor
+21 bruise7d temp_weekavg_3weeklag_median
+[1] "Fitting GAM"
+Observations lost due to missing outcome: 741
+    outcome                  risk_factor
+22 bruise7d temp_weekmin_1weeklag_median
+Observations lost due to missing outcome: 741
+[1] "Fitting GAM"
+    outcome                  risk_factor
+23 bruise7d temp_weekmin_2weeklag_median
+Observations lost due to missing outcome: 741
+[1] "Fitting GAM"
+    outcome                  risk_factor
+24 bruise7d temp_weekmin_3weeklag_median
+[1] "Fitting GAM"
+Observations lost due to missing outcome: 741
+    outcome                  risk_factor
+25 bruise7d temp_weekmax_1weeklag_median
+[1] "Fitting GAM"
+Observations lost due to missing outcome: 741
+    outcome                  risk_factor
+26 bruise7d temp_weekmax_2weeklag_median
+[1] "Fitting GAM"
+Observations lost due to missing outcome: 741
+    outcome                  risk_factor
+27 bruise7d temp_weekmax_3weeklag_median
+[1] "Fitting GAM"
+Observations lost due to missing outcome: 741
+    outcome             risk_factor
+28 bruise7d ppt_week_sum_1weeklag_C
+Observations lost due to missing outcome: 741
+[1] "Fitting GAM"
+Observations lost due to missing outcome: 741
+    outcome             risk_factor
+29 bruise7d ppt_week_sum_2weeklag_C
+[1] "Fitting GAM"
+    outcome             risk_factor
+30 bruise7d ppt_week_sum_3weeklag_C
+Observations lost due to missing outcome: 741
+[1] "Fitting GAM"
+Observations lost due to missing outcome: 741
+Observations lost due to missing outcome: 741
+Observations lost due to missing predictor or covariates: 18
+Observations lost due to missing predictor or covariates: 18
+Observations lost due to missing predictor or covariates: 18
+Observations lost due to missing predictor or covariates: 18
+Observations lost due to missing predictor or covariates: 18
+Observations lost due to missing predictor or covariates: 18
+Observations lost due to missing predictor or covariates: 18
+Observations lost due to missing predictor or covariates: 18
+Observations lost due to missing predictor or covariates: 18
+Observations lost due to missing predictor or covariates: 0
+Observations lost due to missing predictor or covariates: 0
+Observations lost due to missing predictor or covariates: 18
+Observations lost due to missing predictor or covariates: 18
+Observations lost due to missing predictor or covariates: 18
+Observations lost due to missing predictor or covariates: 18
+Observations lost due to missing predictor or covariates: 18
+Observations lost due to missing predictor or covariates: 18
+Observations lost due to missing predictor or covariates: 18
+Observations lost due to missing predictor or covariates: 18
+Observations lost due to missing predictor or covariates: 0
+Observations lost due to missing predictor or covariates: 18
+Observations lost due to missing predictor or covariates: 18
+Observations lost due to missing predictor or covariates: 18
+Observations lost due to missing predictor or covariates: 18
+Observations lost due to missing predictor or covariates: 18
+Observations lost due to missing predictor or covariates: 18
+Observations lost due to missing predictor or covariates: 18
+Observations lost due to missing predictor or covariates: 18
+Observations lost due to missing predictor or covariates: 18
+[1] "Non-spatial gam fit: bruise7d ~ temp_weekavg_3weeklag_median"
+
+Family: poisson 
+Link function: log 
+
+Formula:
+bruise7d ~ temp_weekavg_3weeklag_median
+<environment: 0x11243270>
+
+Parametric coefficients:
+                                         Estimate Std. Error z value Pr(>|z|)
+(Intercept)                              -3.37926    0.09713 -34.792   <2e-16
+temp_weekavg_3weeklag_medianabove median -0.09404    0.13704  -0.686    0.493
+                                            
+(Intercept)                              ***
+temp_weekavg_3weeklag_medianabove median    
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+
+R-sq.(adj) =  -7.82e-05   
+glmer.ML = 1459.7  Scale est. = 1         n = 6561
+[1] "Non-spatial gam fit: bruise7d ~ temp_weekmin_2weeklag_median"
+
+Family: poisson 
+Link function: log 
+
+Formula:
+bruise7d ~ temp_weekmin_2weeklag_median
+<environment: 0x1123e170>
+
+Parametric coefficients:
+                                         Estimate Std. Error z value Pr(>|z|)
+(Intercept)                              -3.26254    0.09091 -35.888   <2e-16
+temp_weekmin_2weeklag_medianabove median -0.34750    0.13833  -2.512    0.012
+                                            
+(Intercept)                              ***
+temp_weekmin_2weeklag_medianabove median *  
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+
+R-sq.(adj) =  0.000852   
+glmer.ML = 1453.8  Scale est. = 1         n = 6561
+[1] "Non-spatial gam fit: bruise7d ~ temp_weekavg_1weeklag_median"
+
+Family: poisson 
+Link function: log 
+
+Formula:
+bruise7d ~ temp_weekavg_1weeklag_median
+<environment: 0x1124a2a0>
+
+Parametric coefficients:
+                                         Estimate Std. Error z value Pr(>|z|)
+(Intercept)                               -3.2895     0.1005 -32.730   <2e-16
+temp_weekavg_1weeklag_medianabove median  -0.2444     0.1374  -1.779   0.0753
+                                            
+(Intercept)                              ***
+temp_weekavg_1weeklag_medianabove median .  
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+
+R-sq.(adj) =  0.000348   
+glmer.ML =   1457  Scale est. = 1         n = 6561
+[1] "Non-spatial gam fit: bruise7d ~ temp_weekmax_2weeklag_C"
+
+Family: poisson 
+Link function: log 
+
+Formula:
+bruise7d ~ s(temp_weekmax_2weeklag_C, bs = "cs")
+<environment: 0x11276be8>
+
+Parametric coefficients:
+            Estimate Std. Error z value Pr(>|z|)    
+(Intercept) -3.43115    0.06865  -49.98   <2e-16 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Approximate significance of smooth terms:
+                              edf Ref.df Chi.sq p-value
+s(temp_weekmax_2weeklag_C) 0.6227      9  1.565   0.109
+
+R-sq.(adj) =  0.000256   
+glmer.ML =   1458  Scale est. = 1         n = 6561
+Observations lost due to missing predictor or covariates: 18
+[1] "Non-spatial gam fit: bruise7d ~ temp_weekmax_2weeklag_median"
+
+Family: poisson 
+Link function: log 
+
+Formula:
+bruise7d ~ temp_weekmax_2weeklag_median
+<environment: 0x11236750>
+
+Parametric coefficients:
+                                         Estimate Std. Error z value Pr(>|z|)
+(Intercept)                              -3.28163    0.09759  -33.63   <2e-16
+temp_weekmax_2weeklag_medianabove median -0.27001    0.13705   -1.97   0.0488
+                                            
+(Intercept)                              ***
+temp_weekmax_2weeklag_medianabove median *  
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+
+R-sq.(adj) =  0.000463   
+glmer.ML = 1456.3  Scale est. = 1         n = 6561
+[1] "Non-spatial gam fit: bruise7d ~ temp_weekmin_1weeklag_median"
+
+Family: poisson 
+Link function: log 
+
+Formula:
+bruise7d ~ temp_weekmin_1weeklag_median
+<environment: 0x11240748>
+
+Parametric coefficients:
+                                         Estimate Std. Error z value Pr(>|z|)
+(Intercept)                              -3.26576    0.09535  -34.25   <2e-16
+temp_weekmin_1weeklag_medianabove median -0.30991    0.13711   -2.26   0.0238
+                                            
+(Intercept)                              ***
+temp_weekmin_1weeklag_medianabove median *  
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+
+R-sq.(adj) =  0.000659   
+glmer.ML = 1455.1  Scale est. = 1         n = 6561
+[1] "Non-spatial gam fit: bruise7d ~ temp_weekavg_2weeklag_median"
+
+Family: poisson 
+Link function: log 
+
+Formula:
+bruise7d ~ temp_weekavg_2weeklag_median
+<environment: 0x11245830>
+
+Parametric coefficients:
+                                         Estimate Std. Error z value Pr(>|z|)
+(Intercept)                              -3.25708    0.09366 -34.776   <2e-16
+temp_weekavg_2weeklag_medianabove median -0.33649    0.13738  -2.449   0.0143
+                                            
+(Intercept)                              ***
+temp_weekavg_2weeklag_medianabove median *  
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+
+R-sq.(adj) =  0.000802   
+glmer.ML = 1454.1  Scale est. = 1         n = 6561
+[1] "Non-spatial gam fit: bruise7d ~ temp_weekmax_1weeklag_median"
+
+Family: poisson 
+Link function: log 
+
+Formula:
+bruise7d ~ temp_weekmax_1weeklag_median
+<environment: 0x11239180>
+
+Parametric coefficients:
+                                         Estimate Std. Error z value Pr(>|z|)
+(Intercept)                              -3.26924    0.09853 -33.179   <2e-16
+temp_weekmax_1weeklag_medianabove median -0.28689    0.13711  -2.092   0.0364
+                                            
+(Intercept)                              ***
+temp_weekmax_1weeklag_medianabove median *  
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+
+R-sq.(adj) =  0.000542   
+glmer.ML = 1455.8  Scale est. = 1         n = 6561
+[1] "Non-spatial gam fit: bruise7d ~ temp_weekmin_3weeklag_median"
+
+Family: poisson 
+Link function: log 
+
+Formula:
+bruise7d ~ temp_weekmin_3weeklag_median
+<environment: 0x1123b6e0>
+
+Parametric coefficients:
+                                         Estimate Std. Error z value Pr(>|z|)
+(Intercept)                              -3.36516    0.09407 -35.772   <2e-16
+temp_weekmin_3weeklag_medianabove median -0.12862    0.13729  -0.937    0.349
+                                            
+(Intercept)                              ***
+temp_weekmin_3weeklag_medianabove median    
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+
+R-sq.(adj) =  -1.4e-05   
+glmer.ML = 1459.3  Scale est. = 1         n = 6561
+[1] "Non-spatial gam fit: bruise7d ~ temp_weekmax_3weeklag_median"
+
+Family: poisson 
+Link function: log 
+
+Formula:
+bruise7d ~ temp_weekmax_3weeklag_median
+<environment: 0x11234210>
+
+Parametric coefficients:
+                                         Estimate Std. Error z value Pr(>|z|)
+(Intercept)                              -3.38035    0.09759 -34.638   <2e-16
+temp_weekmax_3weeklag_medianabove median -0.09116    0.13705  -0.665    0.506
+                                            
+(Intercept)                              ***
+temp_weekmax_3weeklag_medianabove median    
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+
+R-sq.(adj) =  -8.27e-05   
+glmer.ML = 1459.7  Scale est. = 1         n = 6561
+[1] "Non-spatial gam fit: bruise7d ~ ppt_week_sum_2weeklag_C"
+
+Family: poisson 
+Link function: log 
+
+Formula:
+bruise7d ~ s(ppt_week_sum_2weeklag_C, bs = "cs")
+<environment: 0x1122d3e8>
+
+Parametric coefficients:
+            Estimate Std. Error z value Pr(>|z|)    
+(Intercept) -3.43035    0.06852  -50.06   <2e-16 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Approximate significance of smooth terms:
+                                 edf Ref.df Chi.sq p-value
+s(ppt_week_sum_2weeklag_C) 1.512e-05      9      0       1
+
+R-sq.(adj) =  -2.3e-09   
+glmer.ML = 1461.3  Scale est. = 1         n = 6579
+[1] "Non-spatial gam fit: bruise7d ~ temp_weekavg_3weeklag_C"
+
+Family: poisson 
+Link function: log 
+
+Formula:
+bruise7d ~ s(temp_weekavg_3weeklag_C, bs = "cs")
+<environment: 0x112cfa48>
+
+Parametric coefficients:
+            Estimate Std. Error z value Pr(>|z|)    
+(Intercept) -3.43158    0.06868  -49.97   <2e-16 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Approximate significance of smooth terms:
+                              edf Ref.df Chi.sq p-value  
+s(temp_weekavg_3weeklag_C) 0.6534      9  1.762   0.096 .
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+R-sq.(adj) =  0.000286   
+glmer.ML = 1457.7  Scale est. = 1         n = 6561
+[1] "Non-spatial gam fit: bruise7d ~ temp_weekavg_2weeklag_C"
+
+Family: poisson 
+Link function: log 
+
+Formula:
+bruise7d ~ s(temp_weekavg_2weeklag_C, bs = "cs")
+<environment: 0x112d39d8>
+
+Parametric coefficients:
+            Estimate Std. Error z value Pr(>|z|)    
+(Intercept) -3.43618    0.06892  -49.86   <2e-16 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Approximate significance of smooth terms:
+                              edf Ref.df Chi.sq p-value  
+s(temp_weekavg_2weeklag_C) 0.9407      9  3.834   0.029 *
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+R-sq.(adj) =  0.000621   
+glmer.ML = 1455.4  Scale est. = 1         n = 6561
+[1] "Non-spatial gam fit: bruise7d ~ temp_weekmin_1weeklag_C"
+
+Family: poisson 
+Link function: log 
+
+Formula:
+bruise7d ~ s(temp_weekmin_1weeklag_C, bs = "cs")
+<environment: 0x112adf98>
+
+Parametric coefficients:
+            Estimate Std. Error z value Pr(>|z|)    
+(Intercept) -3.43631    0.06894  -49.84   <2e-16 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Approximate significance of smooth terms:
+                              edf Ref.df Chi.sq p-value  
+s(temp_weekmin_1weeklag_C) 0.8555      9  3.984   0.026 *
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+R-sq.(adj) =  0.000644   
+glmer.ML = 1455.4  Scale est. = 1         n = 6561
+[1] "Non-spatial gam fit: bruise7d ~ temp_monthavg_2weeklag_C"
+
+Family: poisson 
+Link function: log 
+
+Formula:
+bruise7d ~ s(temp_monthavg_2weeklag_C, bs = "cs")
+<environment: 0x11306f58>
+
+Parametric coefficients:
+            Estimate Std. Error z value Pr(>|z|)    
+(Intercept) -3.43315    0.06876  -49.93   <2e-16 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Approximate significance of smooth terms:
+                               edf Ref.df Chi.sq p-value  
+s(temp_monthavg_2weeklag_C) 0.7454      9  2.456  0.0626 .
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+R-sq.(adj) =  0.000395   
+glmer.ML =   1457  Scale est. = 1         n = 6561
+[1] "Non-spatial gam fit: bruise7d ~ temp_weekavg_1weeklag_C"
+
+Family: poisson 
+Link function: log 
+
+Formula:
+bruise7d ~ s(temp_weekavg_1weeklag_C, bs = "cs")
+<environment: 0x112f0e40>
+
+Parametric coefficients:
+            Estimate Std. Error z value Pr(>|z|)    
+(Intercept) -3.43365    0.06879  -49.92   <2e-16 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Approximate significance of smooth terms:
+                              edf Ref.df Chi.sq p-value  
+s(temp_weekavg_1weeklag_C) 0.7693      9  2.747  0.0537 .
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+R-sq.(adj) =  0.000447   
+glmer.ML = 1456.7  Scale est. = 1         n = 6561
+[1] "Non-spatial gam fit: bruise7d ~ temp_weekmin_3weeklag_C"
+
+Family: poisson 
+Link function: log 
+
+[1] "Non-spatial gam fit: bruise7d ~ temp_weekavg_3weeklag_C"
+
+Family: poisson 
+Link function: log 
+
+Formula:
+bruise7d ~ s(temp_weekavg_3weeklag_C, bs = "cs")
+<environment: 0x10f149a0>
+
+Parametric coefficients:
+            Estimate Std. Error z value Pr(>|z|)    
+(Intercept) -3.43158    0.06868  -49.97   <2e-16 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Approximate significance of smooth terms:
+                              edf Ref.df Chi.sq p-value  
+s(temp_weekavg_3weeklag_C) 0.6534      9  1.762   0.096 .
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+R-sq.(adj) =  0.000286   
+glmer.ML = 1457.7  Scale est. = 1         n = 6561
+[1] "Non-spatial gam fit: bruise7d ~ ppt_week_sum_2weeklag_C"
+
+Family: poisson 
+Link function: log 
+
+Formula:
+bruise7d ~ s(ppt_week_sum_2weeklag_C, bs = "cs")
+<environment: 0x10e72340>
+
+Parametric coefficients:
+            Estimate Std. Error z value Pr(>|z|)    
+(Intercept) -3.43035    0.06852  -50.06   <2e-16 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Approximate significance of smooth terms:
+                                 edf Ref.df Chi.sq p-value
+s(ppt_week_sum_2weeklag_C) 1.512e-05      9      0       1
+
+R-sq.(adj) =  -2.3e-09   
+glmer.ML = 1461.3  Scale est. = 1         n = 6579
+[1] "Non-spatial gam fit: bruise7d ~ temp_weekmax_2weeklag_C"
+
+Family: poisson 
+Link function: log 
+
+Formula:
+bruise7d ~ s(temp_weekmax_2weeklag_C, bs = "cs")
+<environment: 0x10ebbb40>
+
+Parametric coefficients:
+            Estimate Std. Error z value Pr(>|z|)    
+(Intercept) -3.43115    0.06865  -49.98   <2e-16 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Approximate significance of smooth terms:
+                              edf Ref.df Chi.sq p-value
+s(temp_weekmax_2weeklag_C) 0.6227      9  1.565   0.109
+
+R-sq.(adj) =  0.000256   
+glmer.ML =   1458  Scale est. = 1         n = 6561
+[1] "Non-spatial gam fit: bruise7d ~ temp_weekmin_1weeklag_C"
+
+Family: poisson 
+Link function: log 
+
+Formula:
+bruise7d ~ s(temp_weekmin_1weeklag_C, bs = "cs")
+<environment: 0x10ef2ef0>
+
+Parametric coefficients:
+            Estimate Std. Error z value Pr(>|z|)    
+(Intercept) -3.43631    0.06894  -49.84   <2e-16 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Approximate significance of smooth terms:
+                              edf Ref.df Chi.sq p-value  
+s(temp_weekmin_1weeklag_C) 0.8555      9  3.984   0.026 *
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+R-sq.(adj) =  0.000644   
+glmer.ML = 1455.4  Scale est. = 1         n = 6561
+[1] "Non-spatial gam fit: bruise7d ~ temp_monthmin_3weeklag_C"
+
+Family: poisson 
+Link function: log 
+
+Formula:
+bruise7d ~ s(temp_monthmin_3weeklag_C, bs = "cs")
+<environment: 0x10f3fdd0>
+
+Parametric coefficients:
+            Estimate Std. Error z value Pr(>|z|)    
+(Intercept) -3.43355    0.06877  -49.93   <2e-16 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Approximate significance of smooth terms:
+                               edf Ref.df Chi.sq p-value  
+s(temp_monthmin_3weeklag_C) 0.8731      9  2.592  0.0638 .
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+R-sq.(adj) =  0.000409   
+glmer.ML = 1456.7  Scale est. = 1         n = 6561
+[1] "Non-spatial gam fit: bruise7d ~ ppt_week_sum_1weeklag_C"
+
+Family: poisson 
+Link function: log 
+
+Formula:
+bruise7d ~ s(ppt_week_sum_1weeklag_C, bs = "cs")
+<environment: 0x10e76798>
+
+Parametric coefficients:
+            Estimate Std. Error z value Pr(>|z|)    
+(Intercept) -3.43342    0.06863  -50.03   <2e-16 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Approximate significance of smooth terms:
+                              edf Ref.df Chi.sq p-value
+s(ppt_week_sum_1weeklag_C) 0.6235      9  1.221   0.147
+
+R-sq.(adj) =  0.000177   
+glmer.ML = 1459.5  Scale est. = 1         n = 6579
+[1] "Non-spatial gam fit: bruise7d ~ temp_weekavg_2weeklag_C"
+
+Family: poisson 
+Link function: log 
+
+Formula:
+bruise7d ~ s(temp_weekavg_2weeklag_C, bs = "cs")
+<environment: 0x10f18930>
+
+Parametric coefficients:
+            Estimate Std. Error z value Pr(>|z|)    
+(Intercept) -3.43618    0.06892  -49.86   <2e-16 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Approximate significance of smooth terms:
+                              edf Ref.df Chi.sq p-value  
+s(temp_weekavg_2weeklag_C) 0.9407      9  3.834   0.029 *
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+R-sq.(adj) =  0.000621   
+glmer.ML = 1455.4  Scale est. = 1         n = 6561
+[1] "Non-spatial gam fit: bruise7d ~ temp_monthmin_2weeklag_C"
+
+Family: poisson 
+Link function: log 
+
+Formula:
+bruise7d ~ s(temp_monthmin_2weeklag_C, bs = "cs")
+<environment: 0x10f41e78>
+
+Parametric coefficients:
+            Estimate Std. Error z value Pr(>|z|)    
+(Intercept) -3.43936    0.06912  -49.76   <2e-16 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Approximate significance of smooth terms:
+                              edf Ref.df Chi.sq p-value  
+s(temp_monthmin_2weeklag_C) 1.216      9  5.064  0.0198 *
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+R-sq.(adj) =  0.000795   
+glmer.ML = 1453.9  Scale est. = 1         n = 6561
+[1] "Non-spatial gam fit: bruise7d ~ temp_weekmax_1weeklag_C"
+
+Family: poisson 
+Link function: log 
+
+Formula:
+bruise7d ~ s(temp_weekmax_1weeklag_C, bs = "cs")
+<environment: 0x10ec8968>
+
+Parametric coefficients:
+            Estimate Std. Error z value Pr(>|z|)    
+(Intercept)  -3.4321     0.0687  -49.96   <2e-16 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Approximate significance of smooth terms:
+                              edf Ref.df Chi.sq p-value  
+s(temp_weekmax_1weeklag_C) 0.6912      9  2.003  0.0839 .
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+R-sq.(adj) =  0.000322   
+glmer.ML = 1457.5  Scale est. = 1         n = 6561
+[1] "Non-spatial gam fit: bruise7d ~ temp_monthmax_3weeklag_C"
+
+Family: poisson 
+Link function: log 
+
+Formula:
+bruise7d ~ s(temp_monthmax_3weeklag_C, bs = "cs")
+<environment: 0x10f37e78>
+
+Parametric coefficients:
+            Estimate Std. Error z value Pr(>|z|)    
+(Intercept) -3.43331    0.06876  -49.93   <2e-16 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Approximate significance of smooth terms:
+                              edf Ref.df Chi.sq p-value  
+s(temp_monthmax_3weeklag_C) 0.812      9  2.505  0.0622 .
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+R-sq.(adj) =  0.0004   
+glmer.ML = 1456.9  Scale est. = 1         n = 6561
+[1] "Non-spatial gam fit: bruise7d ~ temp_weekmin_2weeklag_C"
+
+Family: poisson 
+Link function: log 
+
+Formula:
+bruise7d ~ s(temp_weekmin_2weeklag_C, bs = "cs")
+<environment: 0x10eea8e8>
+
+Parametric coefficients:
+            Estimate Std. Error z value Pr(>|z|)    
+(Intercept) -3.44137    0.06926  -49.69   <2e-16 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Approximate significance of smooth terms:
+                              edf Ref.df Chi.sq p-value   
+s(temp_weekmin_2weeklag_C) 0.9466      9  6.208 0.00756 **
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+R-sq.(adj) =  0.000964   
+glmer.ML = 1453.1  Scale est. = 1         n = 6561
+[1] "Non-spatial gam fit: bruise7d ~ ppt_week_sum_3weeklag_C"
+
+Family: poisson 
+Link function: log 
+
+Formula:
+bruise7d ~ s(ppt_week_sum_3weeklag_C, bs = "cs")
+<environment: 0x10e6f9d0>
+
+Parametric coefficients:
+            Estimate Std. Error z value Pr(>|z|)    
+(Intercept) -3.44131    0.06911  -49.79   <2e-16 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Approximate significance of smooth terms:
+                             edf Ref.df Chi.sq p-value  
+s(ppt_week_sum_3weeklag_C) 0.905      9  3.829  0.0317 *
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+R-sq.(adj) =  0.000511   
+glmer.ML = 1456.3  Scale est. = 1         n = 6579
+[1] "Non-spatial gam fit: bruise7d ~ temp_weekavg_1weeklag_C"
+
+Family: poisson 
+Link function: log 
+
+Formula:
+bruise7d ~ s(temp_weekavg_1weeklag_C, bs = "cs")
+<environment: 0x10f35d98>
+
+Parametric coefficients:
+            Estimate Std. Error z value Pr(>|z|)    
+(Intercept) -3.43365    0.06879  -49.92   <2e-16 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Approximate significance of smooth terms:
+                              edf Ref.df Chi.sq p-value  
+s(temp_weekavg_1weeklag_C) 0.7693      9  2.747  0.0537 .
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+R-sq.(adj) =  0.000447   
+glmer.ML = 1456.7  Scale est. = 1         n = 6561
+[1] "Non-spatial gam fit: bruise7d ~ temp_monthavg_1weeklag_C"
+
+Family: poisson 
+Link function: log 
+
+Formula:
+bruise7d ~ s(temp_monthavg_1weeklag_C, bs = "cs")
+<environment: 0x10f4cf60>
+
+Parametric coefficients:
+            Estimate Std. Error z value Pr(>|z|)    
+(Intercept) -3.43434    0.06882   -49.9   <2e-16 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Approximate significance of smooth terms:
+                               edf Ref.df Chi.sq p-value  
+s(temp_monthavg_1weeklag_C) 0.8013      9  3.017  0.0452 *
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+R-sq.(adj) =  0.000486   
+glmer.ML = 1456.4  Scale est. = 1         n = 6561
+[1] "No residual spatial autocorrelation. Saving non-spatial model."
+[1] "Saving results"
+Trycatch is finished.
+[1] "Residual spatial autocorrelation is present. Proceeding with spatial model."
+[1] "Residual spatial autocorrelation is present. Proceeding with spatial model."
+[1] "Residual spatial autocorrelation is present. Proceeding with spatial model."
+[1] "Residual spatial autocorrelation is present. Proceeding with spatial model."
+[1] "No residual spatial autocorrelation. Saving non-spatial model."
+[1] "Saving results"
+Trycatch is finished.
+[1] "Residual spatial autocorrelation is present. Proceeding with spatial model."
+[1] "Residual spatial autocorrelation is present. Proceeding with spatial model."
+[1] "Residual spatial autocorrelation is present. Proceeding with spatial model."
+[1] "Residual spatial autocorrelation is present. Proceeding with spatial model."
+[1] "Residual spatial autocorrelation is present. Proceeding with spatial model."
+[1] "Residual spatial autocorrelation is present. Proceeding with spatial model."
+[1] "Spatial gam fit"
+
+Family: poisson 
+Link function: log 
+
+Formula:
+bruise7d ~ temp_weekavg_2weeklag_median + s(qgpslong, qgpslat, 
+    bs = "tp")
+<environment: 0x10e8a788>
+
+Parametric coefficients:
+                                         Estimate Std. Error z value Pr(>|z|)
+(Intercept)                              -3.30045    0.09692 -34.052   <2e-16
+temp_weekavg_2weeklag_medianabove median -0.30615    0.14088  -2.173   0.0298
+                                            
+(Intercept)                              ***
+temp_weekavg_2weeklag_medianabove median *  
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Approximate significance of smooth terms:
+                    edf Ref.df Chi.sq p-value   
+s(qgpslong,qgpslat)   2      2  11.84 0.00269 **
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+R-sq.(adj) =  0.00242   
+glmer.ML = 1442.7  Scale est. = 1         n = 6561
+[1] "No residual spatial autocorrelation. Saving non-spatial model."
+[1] "Saving results"
+Trycatch is finished.
+[1] "Spatial gam fit"
+
+Family: poisson 
+Link function: log 
+
+Formula:
+bruise7d ~ s(temp_monthmax_1weeklag_C, bs = "cs") + s(qgpslong, 
+    qgpslat, bs = "tp")
+<environment: 0x10f3dd60>
+
+Parametric coefficients:
+            Estimate Std. Error z value Pr(>|z|)    
+(Intercept)  -3.4563     0.0704  -49.09   <2e-16 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Approximate significance of smooth terms:
+                                  edf Ref.df Chi.sq p-value   
+s(temp_monthmax_1weeklag_C) 0.0001856      9   0.00 1.00000   
+s(qgpslong,qgpslat)         2.0000000      2  13.06 0.00146 **
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+R-sq.(adj) =  0.00156   
+glmer.ML = 1447.5  Scale est. = 1         n = 6561
+[1] "Residual spatial autocorrelation is present. Proceeding with spatial model."
+[1] "Spatial gam fit"
+
+Family: poisson 
+Link function: log 
+
+Formula:
+bruise7d ~ temp_weekmax_1weeklag_median + s(qgpslong, qgpslat, 
+    bs = "tp")
+<environment: 0x10e7e0d8>
+
+Parametric coefficients:
+                                         Estimate Std. Error z value Pr(>|z|)
+(Intercept)                               -3.3226     0.1055 -31.504   <2e-16
+temp_weekmax_1weeklag_medianabove median  -0.2395     0.1474  -1.625    0.104
+                                            
+(Intercept)                              ***
+temp_weekmax_1weeklag_medianabove median    
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Approximate significance of smooth terms:
+                    edf Ref.df Chi.sq p-value   
+s(qgpslong,qgpslat)   2      2  11.46 0.00324 **
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+R-sq.(adj) =  0.00202   
+glmer.ML = 1444.8  Scale est. = 1         n = 6561
+[1] "Spatial gam fit"
+
+Family: poisson 
+Link function: log 
+
+Formula:
+bruise7d ~ s(temp_weekavg_3weeklag_C, bs = "cs") + s(qgpslong, 
+    qgpslat, bs = "tp")
+<environment: 0x10f149a0>
+
+Parametric coefficients:
+            Estimate Std. Error z value Pr(>|z|)    
+(Intercept) -3.45679    0.07042  -49.09   <2e-16 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Approximate significance of smooth terms:
+                              edf Ref.df Chi.sq p-value   
+s(temp_weekavg_3weeklag_C) 0.1451      9   0.18 0.26457   
+s(qgpslong,qgpslat)        2.0000      2  12.84 0.00163 **
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+R-sq.(adj) =  0.00162   
+glmer.ML = 1447.2  Scale est. = 1         n = 6561
+[1] "Residual spatial autocorrelation is present. Proceeding with spatial model."
+[1] "Spatial gam fit"
+
+Family: poisson 
+Link function: log 
+
+Formula:
+bruise7d ~ s(temp_weekmax_2weeklag_C, bs = "cs") + s(qgpslong, 
+    qgpslat, bs = "tp")
+<environment: 0x10ebbb40>
+
+Parametric coefficients:
+            Estimate Std. Error z value Pr(>|z|)    
+(Intercept)  -3.4563     0.0704  -49.09   <2e-16 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*�[1] "Spatial gam fit"
+
+Family: poisson 
+Link function: log 
+
+Formula:
+bruise7d ~ s(temp_monthavg_3weeklag_C, bs = "cs") + s(qgpslong, 
+    qgpslat, bs = "tp")
+<environment: 0x11302f90>
+
+Parametric coefficients:
+            Estimate Std. Error z value Pr(>|z|)    
+(Intercept) -3.45947    0.07054  -49.05   <2e-16 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Approximate significance of smooth terms:
+                               edf Ref.df Chi.sq p-valu[1] "Residual spatial autocorrelation is present. Proceeding with spatial model."
+[1] "Residual spatial autocorrelation is present. Proceeding with spatial model."
+[1] "Residual spatial autocorrelation is present. Proceeding with spatial model."
+[1] "Residual spatial autocorrelation is present. Proceeding with spatial model."
+[1] "Residual spatial autocorrelation is present. Proceeding with spatial model."
+[1] "Spatial gam fit"
+
+Family: poisson 
+Link function: log 
+
+Formula:
+bruise7d ~ s(temp_monthmax_2weeklag_C, bs = "cs") + s(qgpslong, 
+    qgpslat, bs = "tp")
+<environment: 0x10f3bcb8>
+
+Parametric coefficients:
+            Estimate Std. Error z value Pr(>|z|)    
+(Intercept) -3.45817    0.07048  -49.07   <2e-16 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Approximate significance of smooth terms:
+                               edf Ref.df Chi.sq p-value   
+s(temp_monthmax_2weeklag_C) 0.4034      9  0.715 0.17987   
+s(qgpslong,qgpslat)         2.0000      2 12.321 0.00211 **
+---
+Signif. codes:  0 ‘***’ 0.001 �[1] "Spatial gam fit"
+
+Family: poisson 
+Link function: log 
+
+Formula:
+bruise7d ~ s(temp_monthmin_2weeklag_C, bs = "cs") + s(qgpslong, 
+    qgpslat, bs = "tp")
+<environment: 0x112fcf20>
+
+Parametric coefficients:
+            Estimate Std. Error z value Pr(>|z|)    
+(Intercept) -3.46924    0.07112  -48.78   <2e-16 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Approximate significance of smooth terms:
+                              edf Ref.df Chi.sq p-value   
+s(temp_monthmin_2weeklag_C) 1.341      9  5.207 0.02236 * 
+s(qgpslong,qgpslat)         2.000      2 12.885 0.00159 **
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+R-sq.(adj) =  0.00266   
+glmer.ML = 1440.9  Scale est. = 1         n = 6561
+[1] "Spatial gam fit"
+
+Family: poisson 
+Link function: log 
+
+Formula:
+bruise7d ~ s(temp_monthavg_2weeklag_C, bs = "cs") + s(qgpslong, 
+    qgpslat, bs = "tp")
+<environment: 0x11306f58>
+
+Parametric coefficients:
+            Estimate Std. Error z value Pr(>|z|)    
+(Intercept) -3.45917    0.07052  -49.05   <2e-16 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Approximate significance of smooth terms:
+                               edf Ref.df Chi.sq p-value   
+s(temp_monthavg_2weeklag_C) 0.5291      9  1.113 0.14224   
+s(qgpslong,qgpslat)         2.0000      2 12.377 0.00205 **
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+R-sq.(adj) =  0.00185   
+glmer.ML = 1445.8  Scale est. = 1         n = 6561
+[1] "Residual spatial autocorrelation is present. Proceeding with spatial model."
+[1] "Residual spatial autocorrelation is present. Proceeding with spatial model."
+[1] "Spatial gam fit"
+
+Family: poisson 
+Link function: log 
+
+Formula:
+bruise7d ~ temp_weekmax_2weeklag_median + s(qgpslong, qgpslat, 
+    bs = "tp")
+<environment: 0x11236750>
+
+Parametric coefficients:
+                                         Estimate Std. Error z value Pr(>|z|)
+(Intercept)                               -3.3343     0.1034  -32.26   <2e-16
+temp_weekmax_2weeklag_medianabove median  -0.2234     0.1451   -1.54    0.124
+                                            
+(Intercept)                              ***
+temp_weekmax_2weeklag_medianabove median    
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Approximate significance of smooth terms:
+                    edf Ref.df Chi.sq p-value   
+s(qgpslong,qgpslat)   2      2  11.65 0.00295 **
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+R-sq.(adj) =  0.00199   
+glmer.ML = 1445.1  Scale est. = 1         n = 6561
+[1] "Residual spatial autocorrelation is present. Proceeding with spatial model."
+[1] "Residual spatial autocorrelation is present. Proceeding with spatial model."
+[1] "No residual spatial autocorrelation. Saving non-spatial model."
+[1] "Saving results"
+[1] "Residual spatial autocorrelation is present. Proceeding with spatial model."
+[1] "Residual spatial autocorrelation is present. Proceeding with spatial model."
+Trycatch is finished.
+[1] "Spatial gam fit"
+
+Family: poisson 
+Link function: log 
+
+Formula:
+bruise7d ~ temp_weekmin_2weeklag_median + s(qgpslong, qgpslat, 
+    bs = "tp")
+<environment: 0x1123e170>
+
+Parametric coefficients:
+                                         Estimate Std. Error z value Pr(>|z|)
+(Intercept)                              -3.30318    0.09301 -35.514   <2e-16
+temp_weekmin_2weeklag_medianabove median -0.32169    0.13913  -2.312   0.0208
+                                            
+(Intercept)                              ***
+temp_weekmin_2weeklag_medianabove median *  
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Approximate significance of smooth terms:
+                    edf Ref.df Chi.sq p-value   
+s(qgpslong,qgpslat)   2      2  12.08 0.00238 **
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+R-sq.(adj) =  0.00246   
+glmer.ML = 1442.1  Scale est. = 1         n = 6561
+[1] "No residual spatial autocorrelation. Saving non-spatial model."
+[1] "Saving results"
+[1] "No residual spatial autocorrelation. Saving non-spatial model."
+[1] "Saving results"
+Trycatch is finished.
+Trycatch is finished.
+[1] "Residual spatial autocorrelation is present. Proceeding with spatial model."
+[1] "Residual spatial autocorrelation is present. Proceeding with spatial model."
+[1] "Residual spatial autocorrelation is present. Proceeding with spatial model."
+[1] "Residual spatial autocorrelation is present. Proceeding with spatial model."
+[1] "Spatial gam fit"
+
+Family: poisson 
+Link function: log 
+
+Formula:
+bruise7d ~ temp_weekavg_2weeklag_median + s(qgpslong, qgpslat, 
+    bs = "tp")
+<environment: 0x11245830>
+
+Parametric coefficients:
+                                         Estimate Std. Error z value Pr(>|z|)
+(Intercept)                              -3.30045    0.09692 -34.052   <2e-16
+temp_weekavg_2weeklag_medianabove median -0.30615    0.14088  -2.173   0.0298
+                                            
+(Intercept)                              ***
+temp_weekavg_2weeklag_medianabove median *  
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Approximate significance of smooth terms:
+                    edf Ref.df Chi.sq p-value   
+s(qgpslong,qgpslat)   2      2  11.84 0.00269 **
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+R-sq.(adj) =  0.00242   
+glmer.ML = 1442.7  Scale est. = 1         n = 6561
+[1] "Residual spatial autocorrelation is present. Proceeding with spatial model."
+[1] "Spatial gam fit"
+
+Family: poisson 
+Link function: log 
+
+Formula:
+bruise7d ~ temp_weekavg_3weeklag_median + s(qgpslong, qgpslat, 
+    bs = "tp")
+<environment: 0x11243270>
+
+Parametric coefficients:
+                                         Estimate Std. Error z value Pr(>|z|)
+(Intercept)                              -3.41736    0.10039 -34.042   <2e-16
+temp_weekavg_3weeklag_medianabove median -0.07568    0.14154  -0.535    0.593
+                                            
+(Intercept)                              ***
+temp_weekavg_3weeklag_medianabove median    
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Approximate significance of smooth terms:
+                    edf Ref.df Chi.sq p-value   
+s(qgpslong,qgpslat)   2      2  12.91 0.00157 **
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+R-sq.(adj) =  0.00155   
+glmer.ML = 1447.2  Scale est. = 1         n = 6561
+[1] "Residual spatial autocorrelation is present. Proceeding with spatial model."
+[1] "Spatial gam fit"
+
+Family: poisson 
+Link function: log 
+
+Formula:
+bruise7d ~ s(temp_monthmax_1weeklag_C, bs = "cs") + s(qgpslong, 
+    qgpslat, bs = "tp")
+<environment: 0x112f8e08>
+
+Parametric coefficients:
+            Estimate Std. Error z value Pr(>|z|)    
+(Intercept)  -3.4563     0.0704  -49.09   <2e-16 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Approximate significance of smooth terms:
+                                  edf Ref.df Chi.sq p-value   
+s(temp_monthmax_1weeklag_C) 0.0001856      9   0.00 1.00000   
+s(qgpslong,qgpslat)         2.0000000      2  13.06 0.00146 **
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+R-sq.(adj) =  0.00156   
+glmer.ML = 1447.5  Scale est. = 1         n = 6561
+[1] "No residual spatial autocorrelation. Saving non-spatial model."
+[1] "Saving results"
+Trycatch is finished.
+[1] "Residual spatial autocorrelation is present. Proceeding with spatial model."
+[1] "Residual spatial autocorrelation is present. Proceeding with spatial model."
+[1] "Residual spatial autocorrelation is present. Proceeding with spatial model."
+[1] "Residual spatial autocorrelation is present. Proceeding with spatial model."
+[1] "Residual spatial autocorrelation is present. Proceeding with spatial model."
+[1] "Spatial gam fit"
+
+Family: poisson 
+Link function: log 
+
+Formula:
+bruise7d ~ s(temp_weekmin_3weeklag_C, bs = "cs") + s(qgpslong, 
+    qgpslat, bs = "tp")
+<environment: 0x11285af0>
+
+Parametric coefficients:
+            Estimate Std. Error z value Pr(>|z|)    
+(Intercept)  -3.4563     0.0704  -49.09   <2e-16 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Approximate significance of smooth terms:
+                                 edf Ref.df Chi.sq p-value   
+s(temp_weekmin_3weeklag_C) 7.991e-05      9   0.00 1.00000   
+s(qgpslong,qgpslat)        2.000e+00      2  13.06 0.00146 **
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+R-sq.(adj) =  0.00156   
+glmer.ML = 1447.5  Scale est. = 1         n = 6561
+[1] "Spatial gam fit"
+
+Family: poisson 
+Link function: log 
+
+Formula:
+bruise7d ~ s(temp_weekavg_3weeklag_C, bs = "cs") + s(qgpslong, 
+    qgpslat, bs = "tp")
+<environment: 0x112cfa48>
+
+Parametric coefficients:
+            Estimate Std. Error z value Pr(>|z|)    
+(Intercept) -3.45679    0.07042  -49.09   <2e-16 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Approximate significance of smooth terms:
+                              edf Ref.df Chi.sq p-value   
+s(temp_weekavg_3weeklag_C) 0.1451      9   0.18 0.26457   
+s(qgpslong,qgpslat)        2.0000      2  12.84 0.00163 **
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+R-sq.(adj) =  0.00162   
+glmer.ML = 1447.2  Scale est. = 1         n = 6561
+[1] "Spatial gam fit"
+
+Family: poisson 
+Link function: log 
+
+Formula:
+bruise7d ~ s(temp_weekavg_2weeklag_C, bs = "cs") + s(qgpslong, 
+    qgpslat, bs = "tp")
+<environment: 0x112d39d8>
+
+Parametric coefficients:
+            Estimate Std. Error z value Pr(>|z|)    
+(Intercept) -3.45969    0.07055  -49.04   <2e-16 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Approximate significance of smooth terms:
+                              edf Ref.df Chi.sq p-value   
+s(temp_weekavg_2weeklag_C) 0.6039      9  1.334 0.12467   
+s(qgpslong,qgpslat)        2.0000      2 11.703 0.00288 **
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+R-sq.(adj) =  0.00192   
+glmer.ML = 1445.5  Scale est. = 1         n = 6561
+[1] "Spatial gam fit"
+
+Family: poisson 
+Link function: log 
+
+Formula:
+bruise7d ~ temp_weekmin_3weeklag_median + s(qgpslong, qgpslat, 
+    bs = "tp")
+<environment: 0x1123b6e0>
+
+Parametric coefficients:
+                                         Estimate Std. Error z value Pr(>|z|)
+(Intercept)                               -3.4015     0.0964 -35.284   <2e-16
+temp_weekmin_3weeklag_medianabove median  -0.1129     0.1395  -0.809    0.418
+                                            
+(Intercept)                              ***
+temp_weekmin_3weeklag_medianabove median    
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Approximate significance of smooth terms:
+                    edf Ref.df Chi.sq p-value   
+s(qgpslong,qgpslat)   2      2  12.86 0.00161 **
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+R-sq.(adj) =  0.00164   
+glmer.ML = 1446.8  Scale est. = 1         n = 6561
+[1] "Spatial gam fit"
+
+Family: poisson 
+Link function: log 
+
+Formula:
+bruise7d ~ s(temp_weekmax_2weeklag_C, bs = "cs") + s(qgpslong, 
+    qgpslat, bs = "tp")
+<environment: 0x11276be8>
+
+Parametric coefficients:
+            Estimate Std. Error z value Pr(>|z|)    
+(Intercept)  -3.4563     0.0704  -49.09   <2e-16 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Approximate significance of smooth terms:
+                                edf Ref.df Chi.sq p-value   
+s(temp_weekmax_2weeklag_C) 4.41e-05      9   0.00 1.00000   
+s(qgpslong,qgpslat)        2.00e+00      2  13.06 0.00146 **
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+R-sq.(adj) =  0.00156   
+glmer.ML = 1447.5  Scale est. = 1         n = 6561
+[1] "Spatial gam fit"
+
+Family: poisson 
+Link function: log 
+
+Formula:
+bruise7d ~ s(temp_monthmax_2weeklag_C, bs = "cs") + s(qgpslong, 
+    qgpslat, bs = "tp")
+<environment: 0x112f6d60>
+
+Parametric coefficients:
+            Estimate Std. Error z value Pr(>|z|)    
+(Intercept) -3.45817    0.07048  -49.07   <2e-16 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Approximate significance of smooth terms:
+                               edf Ref.df Chi.sq p-value   
+s(temp_monthmax_2weeklag_C) 0.4034      9  0.715 0.17987   
+s(qgpslong,qgpslat)         2.0000      2 12.321 0.00211 **
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+R-sq.(adj) =  0.00176   
+glmer.ML = 1446.3  Scale est. = 1         n = 6561
+[1] "Spatial gam fit"
+
+Family: poisson 
+Link function: log 
+
+Formula:
+bruise7d ~ s(temp_weekmin_2weeklag_C, bs = "cs") + s(qgpslong, 
+    qgpslat, bs = "tp")
+<environment: 0x112a5990>
+
+Parametric coefficients:
+            Estimate Std. Error z value Pr(>|z|)    
+(Intercept) -3.46496    0.07087  -48.89   <2e-16 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Approximate significance of smooth terms:
+                              edf Ref.df Chi.sq p-value   
+s(temp_weekmin_2weeklag_C) 0.8274      9  3.557 0.03350 * 
+s(qgpslong,qgpslat)        2.0000      2 11.083 0.00392 **
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+R-sq.(adj) =  0.00234   
+glmer.ML = 1443.1  Scale est. = 1         n = 6561
+[1] "Spatial gam fit"
+
+Family: poisson 
+Link function: log 
+
+Formula:
+bruise7d ~ s(temp_monthmin_3weeklag_C, bs = "cs") + s(qgpslong, 
+    qgpslat, bs = "tp")
+<environment: 0x112fae78>
+
+Parametric coefficients:
+            Estimate Std. Error z value Pr(>|z|)    
+(Intercept) -3.46364    0.07078  -48.94   <2e-16 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Approximate significance of smooth terms:
+                               edf Ref.df Chi.sq p-value   
+s(temp_monthmin_3weeklag_C) 0.9258      9  2.906 0.05502 . 
+s(qgpslong,qgpslat)         2.0000      2 13.227 0.00134 **
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+R-sq.(adj) =  0.00222   
+glmer.ML = 1443.7  Scale est. = 1         n = 6561
+[1] "Spatial gam fit"
+
+Family: poisson 
+Link function: log 
+
+Formula:
+bruise7d ~ s(ppt_week_sum_2weeklag_C, bs = "cs") + s(qgpslong, 
+    qgpslat, bs = "tp")
+<environment: 0x1122d3e8>
+
+Parametric coefficients:
+            Estimate Std. Error z value Pr(>|z|)    
+(Intercept) -3.45915    0.07041  -49.13   <2e-16 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Approximate significance of smooth terms:
+                               edf Ref.df Chi.sq p-value   
+s(ppt_week_sum_2weeklag_C) 0.02059      9  0.022 0.30339   
+s(qgpslong,qgpslat)        2.00000      2 13.109 0.00142 **
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+R-sq.(adj) =  0.00157   
+glmer.ML = 1448.6  Scale est. = 1         n = 6579
+[1] "Spatial gam fit"
+
+Family: poisson 
+Link function: log 
+
+Formula:
+bruise7d ~ s(temp_monthmin_1weeklag_C, bs = "cs") + s(qgpslong, 
+    qgpslat, bs = "tp")
+<environment: 0x112fefc8>
+
+Parametric coefficients:
+            Estimate Std. Error z value Pr(>|z|)    
+(Intercept) -3.46342    0.07077  -48.94   <2e-16 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Approximate significance of smooth terms:
+                               edf Ref.df Chi.sq p-value   
+s(temp_monthmin_1weeklag_C) 0.8113      9  2.892 0.05195 . 
+s(qgpslong,qgpslat)         2.0000      2 12.099 0.00236 **
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+R-sq.(adj) =  0.0022   
+glmer.ML = 1443.8  Scale est. = 1         n = 6561
+[1] "Spatial gam fit"
+
+Family: poisson 
+Link function: log 
+
+Formula:
+bruise7d ~ s(temp_monthmax_3weeklag_C, bs = "cs") + s(qgpslong, 
+    qgpslat, bs = "tp")
+<environment: 0x112f2f20>
+
+Parametric coefficients:
+            Estimate Std. Error z value Pr(>|z|)    
+(Intercept) -3.46027    0.07058  -49.03   <2e-16 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Approximate significance of smooth terms:
+                               edf Ref.df Chi.sq p-value   
+s(temp_monthmax_3weeklag_C) 0.6447      9   1.53 0.10984   
+s(qgpslong,qgpslat)         2.0000      2  12.50 0.00193 **
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+R-sq.(adj) =  0.00192   
+glmer.ML = 1445.3  Scale est. = 1         n = 6561
+[1] "Spatial gam fit"
+
+Family: poisson 
+Link function: log 
+
+Formula:
+bruise7d ~ s(temp_monthavg_1weeklag_C, bs = "cs") + s(qgpslong, 
+    qgpslat, bs = "tp")
+<environment: 0x11308008>
+
+Parametric coefficients:
+            Estimate Std. Error z value Pr(>|z|)    
+(Intercept)  -3.4586     0.0705  -49.06   <2e-16 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Approximate significance of smooth terms:
+                               edf Ref.df Chi.sq p-value   
+s(temp_monthavg_1weeklag_C) 0.4801      9  0.937 0.15790   
+s(qgpslong,qgpslat)         2.0000      2 12.100 0.00236 **
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+R-sq.(adj) =  0.00182   
+glmer.ML =   1446  Scale est. = 1         n = 6561
+[1][1] "Residual spatial autocorrelation is present. Proceeding with spatial model."
+ "Residual spatial autocorrelation is present. Proceeding with spatial model."
+[1] "Saving results"[1]
+ "Saving results"
+Trycatch is finished.
+Trycatch is finished.
+[1] "Residual spatial autocorrelation is present. Proceeding with spatial model."
+[1] "Saving results"
+Trycatch is finished.
+[1] "Residual spatial autocorrelation is present. Proceeding with spatial model."
+[1] "Saving results"
+Trycatch is finished.
+[1] "Residual spatial autocorrelation is present. Proceeding with spatial model."
+[1] "Saving results"
+Trycatch is finished.
+[1] "Residual spatial autocorrelation is present. Proceeding with spatial model."
+[1] "Saving results"
+Trycatch is finished.
+[1] "Residual spatial autocorrelation is present. Proceeding with spatial model."
+[1] "Saving results"
+Trycatch is finished.
+[1] "Residual spatial autocorrelation is present. Proceeding with spatial model."
+[1] "Saving results"
+Trycatch is finished.
+[1] "Residual spatial autocorrelation is present. Proceeding with spatial model."
+[1] "Saving results"
+Trycatch is finished.
+[1] "Residual spatial autocorrelation is present. Proceeding with spatial model."
+[1] "Saving results"
+[1] "Residual spatial autocorrelation is present. Proceeding with spatial model."
+[1] "Saving results"
+Trycatch is finished.
+Trycatch is finished.
+[1] "Residual spatial autocorrelation is present. Proceeding with spatial model."
+[1] "Saving results"
+Trycatch is finished.
+[1] "Residual spatial autocorrelation is present. Proceeding with spatial model."
+[1] "Saving results"
+Trycatch is finished.
+[1] "Residual spatial autocorrelation is present. Proceeding with spatial model."
+[1] "Saving results"
+Trycatch is finished.
+[1] "Residual spatial autocorrelation is present. Proceeding with spatial model."
+[1] "Saving results"
+Trycatch is finished.
+[1] "Residual spatial autocorrelation is present. Proceeding with spatial model."
+[1] "Saving results"
+Trycatch is finished.
+[1] "Residual spatial autocorrelation is present. Proceeding with spatial model."
+[1] "Saving results"
+Trycatch is finished.
+[1] "Residual spatial autocorrelation is present. Proceeding with spatial model."
+[1] "Saving results"
+Trycatch is finished.
+[1] "Residual spatial autocorrelation is present. Proceeding with spatial model."
+[1] "Saving results"
+Trycatch is finished.
+[1] "Residual spatial autocorrelation is present. Proceeding with spatial model."
+[1] "Saving results"
+Trycatch is finished.
+[1] "Residual spatial autocorrelation is present. Proceeding with spatial model."
+[1] "Saving results"
+Trycatch is finished.
+[1] "Residual spatial autocorrelation is present. Proceeding with spatial model."
+[1] "Saving results"
+Trycatch is finished.
+[1] "Residual spatial autocorrelation is present. Proceeding with spatial model."
+[1] "Saving results"
+Trycatch is finished.
+[1] "Residual spatial autocorrelation is present. Proceeding with spatial model."
+[1] "Saving results"
+Trycatch is finished.
+[1] "Residual spatial autocorrelation is present. Proceeding with spatial model."
+[1] "Saving results"
+Trycatch is finished.
+[1] "Residual spatial autocorrelation is present. Proceeding with spatial model."
+[1] "Saving results"
+Trycatch is finished.
+[[1]]
+NULL
+
+[[2]]
+NULL
+
+[[3]]
+NULL
+
+[[4]]
+NULL
+
+[[5]]
+NULL
+
+[[6]]
+NULL
+
+[[7]]
+NULL
+
+[[8]]
+NULL
+
+[[9]]
+NULL
+
+[[10]]
+NULL
+
+[[11]]
+NULL
+
+[[12]]
+NULL
+
+[[13]]
+NULL
+
+[[14]]
+NULL
+
+[[15]]
+NULL
+
+[[16]]
+NULL
+
+[[17]]
+NULL
+
+[[18]]
+NULL
+
+[[19]]
+NULL
+
+[[20]]
+NULL
+
+[[21]]
+NULL
+
+[[22]]
+NULL
+
+[[23]]
+NULL
+
+[[24]]
+NULL
+
+[[25]]
+NULL
+
+[[26]]
+NULL
+
+[[27]]
+NULL
+
+[[28]]
+NULL
+
+[[29]]
+NULL
+
+[[30]]
+NULL
+
+> 
+> stopImplicitCluster()
+> 
+> proc.time()
+     user    system   elapsed 
+88273.147  4665.277  6426.952 

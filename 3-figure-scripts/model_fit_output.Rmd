@@ -1,0 +1,152 @@
+---
+date: "`r Sys.Date()`"
+output: pdf_document
+params:
+  outcome: diar7d
+  risk_factor: avgtemp_7_days
+  interaction_term: age_cat 
+  analysis: diarrhea-unadjusted
+  plot: all
+header-includes:
+  - \usepackage{placeins}
+---
+
+
+```{r load-packages, include=FALSE}
+# configure directories, load libraries and base functions
+source(paste0(here::here(), "/0-config.R"))
+# Set white theme for all figures
+theme_set(theme_bw())
+knitr::opts_chunk$set(echo = FALSE, cache=FALSE)
+knitr::knit_hooks$set(plot = function(x, options)  {
+  paste0(knitr::hook_plot_tex(x, options), "\n\\FloatBarrier\n")
+})
+options(knitr.table.format = "latex")
+```
+
+# Outcome: `r text_spec(params$outcome, color = "blue", italic = T)`    
+# Risk factor: `r text_spec(params$risk_factor, color = "blue", italic = T)` 
+# Interaction term: `r text_spec(params$interaction_term, color = "blue", italic = T)` 
+```{r load-data}
+if (is.null(interaction_term)) {
+  x = readRDS(paste0(sherlock_results_dir, 
+                   "gam_outputs/",
+                   params$analysis, 
+                   "/gam_",
+                   params$outcome, 
+                   "_",
+                   params$risk_factor,
+                   ".RDS"))
+} else {
+  x = readRDS(paste0(sherlock_results_dir, 
+                     "gam_outputs/", 
+                     params$analysis, 
+                     "/gam_",
+                     params$outcome, 
+                     "_",
+                     params$risk_factor,
+                     "_by_", 
+                     params$interaction_term,
+                     ".RDS"))
+}
+
+message(paste0("Observations lost due to missing outcome: ", x$drop_outcome))
+message(paste0("Observations lost due to missing predictor or covariates: ", x$drop_predictors))
+
+
+if (length(x$spatial_gam_fit) == 2) {
+# 
+# if (is.na(x$spatial_gam_fit)) {
+#   fit.gam = x$gam_fit$gam
+#   fit.mer = x$gam_fit$mer
+# } else {
+  fit.gam = x$spatial_gam_fit$gam
+  fit.mer = x$spatial_gam_fit$mer
+} else {
+  fit.gam = x$gam_fit$gam
+  fit.mer = x$gam_fit$mer
+}
+
+print(summary(fit.mer))
+# pred_fit = predict_gam(fit, )
+# x_ageSex = readRDS(paste0(here::here(), 
+#                   "/results/gam_outputs/gam_",
+#                   params$outcome, 
+#                   "_",
+#                   params$risk_factor,
+#                   "_AgeSex.RDS"))
+# fit_ageSex = x_ageSex$gam_fit
+```
+
+### GAM model fit summary
+```{r gam-fit-summary}
+summary(fit.gam)
+```
+
+
+## Plots   
+```{r simulateResiduals, echo = T}
+simulationOut = simulateResiduals(fittedModel = fit.mer)
+plot(simulationOut)
+```
+
+
+```{r recalculateResiduals, echo = T}
+res2 = recalculateResiduals(simulationOut, group = x$model_input_data$dataid)
+plot(res2)
+```
+
+```{r gam-plot-with-data-points, echo = T}
+# smooth fit for risk factor
+# trans = plogis: transform to probabilities instead of log odds
+# shift = coef(fit_gam)[1]: incorporate model intercept to show the probability
+# of the outcome if all other variables were at their average value
+# seWithMean = TRUE: CI interpreted as the range of uncertainty of the probability of the outcome for any value of the variable, holding other variables equal at their average value.
+if (is.factor(x$model_input_data[,x$a])) {
+  print("No plots for categorical risk factors")
+} else {
+  if (params$plot == "only risk factor") {
+    plot(x = fit.gam, 
+         trans = plogis, 
+         shift = coef(fit.gam)[1],
+         seWithMean = TRUE, 
+         residuals = T, 
+         pch = 1, cex = 1,
+         select = 1)
+  } else {
+    plot(x = fit.gam, 
+         trans = plogis, 
+         shift = coef(fit.gam)[1],
+         seWithMean = TRUE, 
+         residuals = TRUE, 
+         pch = 1, cex = 1)
+  }
+}
+```
+
+\newpage
+
+Surface interaction with confidence intervals (if spatial GAM used)    
+
+```{r splot-spatial-gam ,echo = T}
+if (x$spatial_autocorr) { # Only run this chunk if spatial gam was used
+  vis.gam(x = fit.gam, 
+          view = c("qgpslong", "qgpslat"),
+          plot.type = "persp",
+          # theta = 220, phi = 55, r = 0.1, #<-- use the following to rotate plot if needed
+          se = 2)
+  
+  # heat map of spatial interaction 
+  # The yellow colors represent larger predictions and the red colors smaller ones.
+  # change number of contours with nlevels argument 
+  vis.gam(x = fit.gam, 
+          view = c("qgpslong", "qgpslat"),
+          plot.type = "contour")
+}
+```
+
+\newpage 
+
+```{r, echo = T}
+sessionInfo()
+```
