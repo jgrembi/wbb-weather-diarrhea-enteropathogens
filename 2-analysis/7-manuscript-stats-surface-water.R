@@ -163,3 +163,9 @@ prev_table %>%
          risk_factor == "prop_detected_ephemeral_surface_water_750_median", 
          Group == "Adj.") %>%
   select(outcome_name, risk_factor, PR, PR.Lower, PR.Upper)
+
+
+#--------------------------------------
+# Capture session info
+#--------------------------------------
+sessionInfo()

@@ -90,3 +90,8 @@ cat_interaction_results <- cat_interaction_results %>%
   left_join(pretty_labels)
 
 saveRDS(cat_interaction_results, file = paste0(data_dir, "corrected_PR_tables_age_interaction_diarrhea.RDS"))  
+
+#--------------------------------------
+# Capture session info
+#--------------------------------------
+sessionInfo()
