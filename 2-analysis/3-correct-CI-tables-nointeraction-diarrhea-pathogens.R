@@ -171,3 +171,7 @@ updated_table = prev_table %>%
 
 saveRDS(updated_table, paste0(data_dir, "corrected_PR_tables_nointeraction.RDS"))
 
+#--------------------------------------
+# Capture session info
+#--------------------------------------
+sessionInfo()

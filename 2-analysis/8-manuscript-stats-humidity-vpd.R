@@ -156,3 +156,8 @@ pathogen_data %>%
   summarise(prev = mean(fit, na.rm = T),
             lb = mean(lwrS,na.rm = T),
             ub = mean(uprS, na.rm = T))
+
+#--------------------------------------
+# Capture session info
+#--------------------------------------
+sessionInfo()

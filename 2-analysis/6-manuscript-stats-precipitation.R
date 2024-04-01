@@ -138,3 +138,8 @@ prev_table %>%
          Group == "Adj.") %>%
   select(outcome_name, risk_factor, PR, PR.Lower, PR.Upper)
 
+
+#--------------------------------------
+# Capture session info
+#--------------------------------------
+sessionInfo()

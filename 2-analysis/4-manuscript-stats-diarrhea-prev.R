@@ -41,3 +41,8 @@ PR_upper <- exp(estimate + qnorm(0.975)*SE)
 PR
 PR_lower
 PR_upper
+
+#--------------------------------------
+# Capture session info
+#--------------------------------------
+sessionInfo()

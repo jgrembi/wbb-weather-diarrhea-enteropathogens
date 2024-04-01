@@ -293,3 +293,8 @@ for(k in 1:length(risk_factors_categorical)) {
 
 toc <- Sys.time()
 toc - tic
+
+#--------------------------------------
+# Capture session info
+#--------------------------------------
+sessionInfo()
