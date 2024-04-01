@@ -10,8 +10,8 @@
 #--------------------------------------------
 # Install (if not already installed) and load in libraries
 #--------------------------------------------
-install.packages("Librarian")
-library(Librarian)
+install.packages("librarian")
+library(librarian)
 
 shelf(here, dplyr, ggcorrplot, tidyr, reshape2, ggplot2,
       grid, gridExtra, ben-arnold/washb, lubridate, stringr,
