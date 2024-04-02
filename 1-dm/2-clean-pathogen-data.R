@@ -1,6 +1,6 @@
 #######################################
-# WASH Benefits 
-# spatial environmental risk factor analysis
+# WASH Benefits Bangladesh  
+# Hydrometeorological risk factors for diarrhea and enteropathogens
 
 # clean bangladesh EE midline enteropathogen data
 #######################################
@@ -12,7 +12,8 @@ drop_last_char = function(x){
 
 ## configure directories, load libraries and base functions
 source(paste0(here::here(), "/0-config.R"))
-library(rdrop2)
+## Use the librarian package to install and load the following libraries only used in this script
+shelf(rdrop2)
 
 #--------------------------------------------
 # set up Box and Dropbox authentication
@@ -249,3 +250,8 @@ bdata = left_join(bdata, gps, by = c("dataid", "block", "clusterid")) %>%
 # Save clean data
 #--------------------------------------
 saveRDS(bdata, paste0(clean_washb_path_box, clean_bdata_pathogen_box))
+
+#--------------------------------------
+# Capture session info
+#--------------------------------------
+sessionInfo()

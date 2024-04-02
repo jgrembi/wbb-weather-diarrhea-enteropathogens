@@ -9,10 +9,9 @@
 #######################################
 rm(list=ls())
 
-library(ellipse)
-
 # configure directories, load libraries and base functions
 source(paste0(here::here(), "/0-config.R"))
+library(ellipse)
 
 wbb_diarr = readRDS(paste0(clean_offset_data_dir, "washb-bangladesh-merged-diarr_offset.RDS")) %>% 
   filter(intervention == 0) 
@@ -86,3 +85,7 @@ pairs(rfs, cex=0.05,las=1,
 dev.off()
 
 
+#--------------------------------------
+# Capture session info
+#--------------------------------------
+sessionInfo()

@@ -320,3 +320,8 @@ combined_plot <- grid.arrange(diar_plot, ecoli_parasite, bacteria_virus, ncol = 
 ggsave(combined_plot,
        filename = paste0(here::here(), "/4-figures/3-plot-gam-temp-maintext.tiff"),
        height = 6, width = 10, units = "in")
+
+#--------------------------------------
+# Capture session info
+#--------------------------------------
+sessionInfo()

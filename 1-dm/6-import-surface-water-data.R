@@ -20,10 +20,9 @@ rm(list=ls())
 
 # configure directories, load libraries and base functions
 source(paste0(here::here(), "/0-config.R"))
-library(raster)
-library(geosphere)
-library(pracma)
-library(matrixStats)
+## Use the librarian package to install and load the following libraries only used in this script
+shelf(raster, geosphere, pracma, matrixStats)
+
 
 d_path = readRDS(paste0(clean_washb_path_box, clean_bdata_pathogen_box)) %>%
   filter(!is.na(qgpslong), !is.na(date))
@@ -118,3 +117,7 @@ distance_from_water = lapply(ll_blocks, find_distance_from_water) %>% bind_rows(
 
 saveRDS(distance_from_water, paste0(box_data_path, "washb-bangladesh-distance_from_surface_water.RDS"))
 
+#--------------------------------------
+# Capture session info
+#--------------------------------------
+sessionInfo()

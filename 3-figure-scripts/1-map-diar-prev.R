@@ -128,4 +128,8 @@ my.palette <- viridis(n=5, option = "B",
 (all_maps = BD_map | BD_map_zoom)
 
 ggsave(paste0(fig_dir, "1-diarrhea_map_seasons.tiff"), all_maps, height = 5, width = 10)
-# ggsave(paste0(fig_dir, "1-diarrhea_map_seasons.pdf"), all_maps, height = 5, width = 10)
+
+#--------------------------------------
+# Capture session info
+#--------------------------------------
+sessionInfo()

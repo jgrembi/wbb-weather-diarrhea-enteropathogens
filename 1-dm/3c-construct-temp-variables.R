@@ -9,8 +9,8 @@ rm(list=ls())
 
 # configure directories, load libraries and base functions
 source(paste0(here::here(), "/0-config.R"))
-library(future)
-library(future.apply)
+## Use the librarian package to install and load the following libraries only used in this script
+shelf(future, future.apply)
 
 
 d_path = readRDS(paste0(clean_washb_path_box, clean_bdata_pathogen_box)) %>%
@@ -99,10 +99,6 @@ extract_temp_data = function(ll_row){
   return(bind_cols(ll_data, avg_7day_temp, avg_month_temp))
 }
 
-##For some reason this gets hung running it in parallel.  
-# I tried both an mclapply() call and also the same as below but run
-# in parallel with 8 cores (registerDoParallel(detectCores()/2)).
-# Both ran for over 24 h and never exited.
 
 tic("make temp vars") ## took 6.7 hours/ 23992.155 sec  
 temp_data = foreach(i = 1:dim(ll)[1],
@@ -117,3 +113,8 @@ temp_data = temp_data %>%
   mutate_if(is.numeric, ~ replace(., is.infinite(.), NA))
 
 saveRDS(temp_data, paste0(box_data_path, "washb-bangladesh-temperature-fldas.RDS"))
+
+#--------------------------------------
+# Capture session info
+#--------------------------------------
+sessionInfo()

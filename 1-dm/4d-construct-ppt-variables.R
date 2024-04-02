@@ -154,3 +154,8 @@ tic("process ppt data")
 processed_ppt_data = apply(ll, 1, extract_ppt_data) %>% bind_rows()
 toc()
 saveRDS(processed_ppt_data, paste0(box_data_path, "washb-bangladesh-ppt-data-new.RDS"))
+
+#--------------------------------------
+# Capture session info
+#--------------------------------------
+sessionInfo()

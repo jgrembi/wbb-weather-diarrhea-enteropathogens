@@ -205,3 +205,7 @@ legend <- get_legend(legend_plot)
 ggsave(combined_plot, filename = paste0(fig_dir, "S6-plot-precipitation-binary-75-90-percentiles.tiff"), 
        width = 12, height = 14)
 
+#--------------------------------------
+# Capture session info
+#--------------------------------------
+sessionInfo()

@@ -105,3 +105,7 @@ plot_negc_data %>%
             lb = mean(lwrS,na.rm = T),
             ub = mean(uprS, na.rm = T))
 
+#--------------------------------------
+# Capture session info
+#--------------------------------------
+sessionInfo()

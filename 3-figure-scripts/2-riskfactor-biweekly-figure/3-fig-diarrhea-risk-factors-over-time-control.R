@@ -145,8 +145,6 @@ cluster_level_mean_by_week <- bind_rows(cluster_level_mean_by_week,
 plot_dat <-cluster_level_mean_by_week %>%
   filter(measure %in% c("diar7d", "ppt_week_sum_2weeklag","temp_weekavg_3weeklag",
                         "vpd",
-                        # "prop_detected_seasonal_surface_water_500",
-                        # "prop_detected_ephemeral_surface_water_500",
                         "distance_from_any_surface_water")) %>% 
   mutate(measure = factor(measure, levels = var_names)) 
 
@@ -231,3 +229,7 @@ plot <- plot_grid(rf_plot_weekly, n_plot_weekly, ncol = 1, rel_heights = c(3, 1)
 
 ggsave(plot, filename = paste0(fig_dir, "2-diarrhea-0-risk-factors-weekly.tiff"), height = 7, width = 5, units = "in")
 
+#--------------------------------------
+# Capture session info
+#--------------------------------------
+sessionInfo()

@@ -268,3 +268,7 @@ ggsave(plot_temp_max_path,
        filename = paste0(fig_dir, "S5-plot-gam-temp-max-pathogens.tiff"),
        width = 8, height = 9)
 
+#--------------------------------------
+# Capture session info
+#--------------------------------------
+sessionInfo()

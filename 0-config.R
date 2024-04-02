@@ -10,7 +10,6 @@
 #--------------------------------------------
 # Install (if not already installed) and load in libraries
 #--------------------------------------------
-install.packages("librarian")
 library(librarian)
 
 shelf(here, dplyr, ggcorrplot, tidyr, reshape2, ggplot2,
@@ -19,7 +18,7 @@ shelf(here, dplyr, ggcorrplot, tidyr, reshape2, ggplot2,
       viridis, caret, wrapr, pgirmess, tidyverse, kableExtra,
       rmarkdown, tictoc, doParallel, doRNG, parallel, foreach,
       magrittr, broom, lme4, rcartocolor, RColorBrewer, MetBrewer,
-      cowplot, patchwork)
+      cowplot)
 
 # source base functions  
 source(paste0(here::here(), "/0-utils/0-base-functions.R"))

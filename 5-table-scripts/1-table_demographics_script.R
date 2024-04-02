@@ -175,7 +175,7 @@ names = c("Diarrhea",
 variables_names <- c("Children", "Observations", 
                      "2012", "2013", "2014", "2015", "2016",
                      "Mean age in months (SD)",
-                     "Rainy", "Dry", "Antibiotics", # "Deworming",
+                     "Rainy", "Dry", "Antibiotics", 
                      "Control", "Handwashing", "Nutrition",
                      "Nutrition + WSH", "Sanitation", "Water", "WSH")
 
@@ -183,3 +183,8 @@ colnames(table_demographics) = names
 rownames(table_demographics) = variables_names
 
 write.csv(table_demographics, paste0(here::here(), "/6-tables/1-participant-demographics.csv"))
+
+#--------------------------------------
+# Capture session info
+#--------------------------------------
+sessionInfo()

@@ -10,8 +10,8 @@ rm(list=ls())
 
 # configure directories, load libraries and base functions
 source(paste0(here::here(), "/0-config.R"))
-library(future)
-library(future.apply)
+## Use the librarian package to install and load the following libraries only used in this script
+shelf(future, future.apply)
 
 
 all_daily_fldas_data = readRDS(paste0(box_data_path, "daily_temperatures_fldas.RDS"))
@@ -86,3 +86,8 @@ temp_conversion_K_C = round(-273.15, 2)
 
 
 saveRDS(temp_cutoffs, paste0(box_data_path, "fldas_temp_cutoffs.RDS"))
+
+#--------------------------------------
+# Capture session info
+#--------------------------------------
+sessionInfo()

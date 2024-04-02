@@ -1,13 +1,10 @@
-################################################################################
-# WASH Benefits 
-# spatial environmental risk factor analysis
-#
-# For use on Sherlock virtual machine (stored in 3-figure-scripts/intermediate-RDS-files).
-# Generates intermediate RDS tables with PR and confidence intervals.
+#######################################
+# WASH Benefits Bangladesh  
+# Hydrometeorological risk factors for diarrhea and enteropathogens
 # 
 # This script makes the supplemental table showing negative control outcome of bruising
 #
-################################################################################
+#######################################
 
 rm(list=ls())
 source(here::here("0-config.R"))
@@ -58,3 +55,7 @@ neg_control = prev_table %>%
 
 write.csv(neg_control, file = paste0(tab_dir, "S3-Table-adjusted-pr-table-neg-control.csv"))
   
+#--------------------------------------
+# Capture session info
+#--------------------------------------
+sessionInfo()

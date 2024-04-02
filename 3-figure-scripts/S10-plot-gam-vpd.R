@@ -159,3 +159,7 @@ ggsave(plot_VPD,
        width = 8, height = 6)
 
 
+#--------------------------------------
+# Capture session info
+#--------------------------------------
+sessionInfo()

@@ -205,3 +205,9 @@ legend <- get_legend(legend_plot)
 
 ggsave(combined_plot, filename = paste0(fig_dir, "S7-plot-heavyrain-binary.tiff"), 
        width = 12, height = 14)
+
+
+#--------------------------------------
+# Capture session info
+#--------------------------------------
+sessionInfo()

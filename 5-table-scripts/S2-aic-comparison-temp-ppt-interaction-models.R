@@ -22,9 +22,6 @@ interaction_files <- list.files(interaction_directory, full.names = T,  pattern 
 
 
 get_aic <- function(file) {
-  # file = adjusted_ppt_files[1]
-  # file = "/Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/diarrhea-adjusted-nointeraction-ppt-temp-0/gam_diar7d_0_ppt_week_sum_1weeklag_median_and_temp_monthavg_1weeklag_C.RDS"
-   # file ="/Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted-interaction-ppt/gam_pos_virus_temp_weekavg_2weeklag_C_by_ppt_week_sum_2weeklag_90.RDS"
   print(file)
   model_res <- readRDS(file)
   
@@ -95,8 +92,6 @@ res = bind_rows(temp_adj, ppt_temp) %>%
 table_out <- res %>%
   select(risk_factor, formula, fit_type, aic, bic)
 
-# write.csv(table_out, paste0(here::here(), "/6-tables/S2a-diarrhea-interaction-results.csv"))
-
 ## now load pathogen data
 paths_adj_directory <- paste0(offset_results_path, "gam_outputs/pathogens-adjusted")
 paths_adj_files <- list.files(paths_adj_directory, full.names = T, pattern = ".RDS") 
@@ -150,14 +145,12 @@ risk_factor_levels <- c( "temp_weekavg_0weeklag_C",
 
 all_table_out <- bind_rows(path_res, res) %>%
   filter(!grepl("_median", risk_factor)) %>%
-  # mutate(other_term = ifelse(!is.na(adj_cov), adj_cov, ifelse(!is.na(interaction_term), interaction_term, NA)),
   mutate(outcome = factor(gsub("pos_", "", outcome), levels = c("diar7d", "Adenovirus40_41", "Norovirus", "Sapovirus", "virus",
                                                                "Cryptosporidium","E.bieneusi", "Giardia", "parasite",
                                                                "Aeromonas", "B.fragilis","Campylobacter", "C.difficile","Plesiomonas","Shigella_EIEC",
                                                                "EAEC","EPEC","ETEC","STEC"))) %>%
   select(risk_factor, interaction_term, formula, model, aic, bic, outcome) %>%
   pivot_wider(names_from = outcome, values_from = c("aic", "bic"), names_vary = "slowest") %>%
-  # filter(!(is.na(interaction_term) & model == "temp + ppt + A")) #%>%
   mutate(risk_factor = factor(risk_factor, levels = risk_factor_levels)) %>%
   arrange(risk_factor, formula)
 
@@ -186,3 +179,8 @@ aic_table <- all_table_out %>%
 write.csv(x = aic_table, 
           file = paste0(here::here(), "/6-tables/aic-all-models-ppt-temp-interaction-results.csv"),
           row.names = FALSE)
+
+#--------------------------------------
+# Capture session info
+#--------------------------------------
+sessionInfo()

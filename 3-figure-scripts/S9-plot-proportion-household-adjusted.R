@@ -171,3 +171,7 @@ ggsave(combined_plot, filename = paste0(fig_dir, "S9-plot-prop-water-adjusted.ti
        width = 18, height = 10)
 
 
+#--------------------------------------
+# Capture session info
+#--------------------------------------
+sessionInfo()

@@ -161,3 +161,8 @@ combined_plot <- ((ppt + theme(legend.position = "none")) + plot_spacer() +
 ggsave(final_plot, file = paste0(fig_dir, "S11-diarrhea-rf-age-interaction.tiff"),
        height = 10, 
        width = 14)
+
+#--------------------------------------
+# Capture session info
+#--------------------------------------
+sessionInfo()

@@ -1,30 +1,22 @@
-################################################################################
-# WASH Benefits 
-# spatial environmental risk factor analysis
+#######################################
+# WASH Benefits Bangladesh  
+# Hydrometeorological risk factors for diarrhea and enteropathogens
 #
-# For use on Sherlock virtual machine (stored in 3-figure-scripts/intermediate-RDS-files).
-# Generates intermediate RDS tables with PR and confidence intervals.
 # 
-# This script makes the supplemental table showing bacterial pathogen associations with temperature
+# This script makes the supplemental table showing bacterial pathogen 
+#  associations with temperature
 #
 ################################################################################
 
 rm(list=ls())
 source(here::here("0-config.R"))
 source(paste0(here::here(), "/0-utils/1-plot-functions.R"))
+
 # define list of temperature variable names
 temp_vars <- list("temp_weekavg_1weeklag_C")
-# "temp_weekavg_2weeklag_C",
-# "temp_weekavg_3weeklag_C",
-# "temp_weekmax_1weeklag_C",
-# "temp_weekmin_1weeklag_C"#,
-# "temp_monthavg_0monthlag_C",
-# "temp_monthmax_0monthlag_C",
-# "temp_monthmin_0monthlag_C"
-# )
+
 
 # read in results --------------------------------------------------
-# define results path in Box 
 pathogen_results_dir <- paste0(offset_results_path, "gam_outputs/pathogens-adjusted/")
 
 # bacterial pathogen outcomes
@@ -74,13 +66,6 @@ bacteria_temp_table_19 <- pathogen_data %>%
             ub = format(round(mean(uprS), 1), nsmall = 1),
             prev_CI_19 = paste0(prev, " (", lb, ", ", ub, ")"))
 
-# bacteria_temp_table_32 <- pathogen_data %>%
-#   filter(risk_factor == "temp_weekavg_1weeklag_C" & risk_factor_value>=31.6 & risk_factor_value<=32.4) %>%
-#   group_by(outcome) %>%
-#   summarise(prev = format(round(mean(fit), 1), nsmall = 1),
-#             lb = format(round(mean(lwrS), 1), nsmall = 1),
-#             ub = format(round(mean(uprS), 1), nsmall = 1),
-#             prev_CI_32 = paste0(prev, " (", lb, ", ", ub, ")"))
 
 bacteria_temp_table_30 <- pathogen_data %>%
   filter(risk_factor == "temp_weekavg_1weeklag_C" & risk_factor_value>=29.6 & risk_factor_value<=30.4) %>%
@@ -99,3 +84,8 @@ bacteria_temp_table <- bacteria_temp_table_19 %>%
   rename(Bacteria = outcome_clean, `Prevalence (95% CI) at 19 C` = prev_CI_19, `Prevalence (95% CI) at 30 C` = prev_CI_30)
 
 write.csv(bacteria_temp_table, paste0(tab_dir, "S1-Table-bacteria-prevalence-temp-with-95CI.csv"))
+
+#--------------------------------------
+# Capture session info
+#--------------------------------------
+sessionInfo()

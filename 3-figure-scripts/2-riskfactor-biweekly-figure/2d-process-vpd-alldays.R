@@ -1,6 +1,6 @@
 #######################################
-# WASH Benefits 
-# spatial environmental risk factor analysis
+# WASH Benefits Bangladesh  
+# Hydrometeorological risk factors for diarrhea and enteropathogens
 
 # Process vapor pressure deficit data 
 # to calculate weekly sums with selected lags
@@ -88,3 +88,8 @@ mean_vpd_savedata = data.frame (
 )
 
 saveRDS(mean_vpd_savedata, file = paste0(data_dir, glue::glue("biweekly_plot_data/mean_vpd_time_for_plot.RDS")))
+
+#--------------------------------------
+# Capture session info
+#--------------------------------------
+sessionInfo()

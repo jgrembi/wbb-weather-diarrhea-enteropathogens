@@ -69,3 +69,8 @@ d_diar$biweek = as.Date(d_diar$biweek, origin = "1970-01-01")
 assert_that(min(d_diar$biweek) == min(master_biweek$biweek_date))
 
 saveRDS(d_diar, paste0(data_dir, "biweekly_plot_data/d_diar_biweek.RDS"))
+
+#--------------------------------------
+# Capture session info
+#--------------------------------------
+sessionInfo()

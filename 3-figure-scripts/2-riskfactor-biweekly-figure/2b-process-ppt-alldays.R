@@ -116,3 +116,7 @@ for (n in lag_times$num_weeks_lag){
   saveRDS(total_ppt_savedata, file = paste0(data_dir, glue::glue("biweekly_plot_data/ppt_total_{n}wklag_time_for_plot.RDS")))
 }
 
+#--------------------------------------
+# Capture session info
+#--------------------------------------
+sessionInfo()

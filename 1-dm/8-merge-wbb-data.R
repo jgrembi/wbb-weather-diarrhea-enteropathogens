@@ -273,3 +273,8 @@ path_merged = merge_dfs(df = d_path, output_file_name = "washb-bangladesh-merged
 diarr_merged = merge_dfs(df = d_diarr, output_file_name = "washb-bangladesh-merged-diarr.RDS")
 
 source(paste0("~/Dropbox/08_JadeCollaboration/wbb-mapping", "/0-data-processing/offset_coords.R"))
+
+#--------------------------------------
+# Capture session info
+#--------------------------------------
+sessionInfo()

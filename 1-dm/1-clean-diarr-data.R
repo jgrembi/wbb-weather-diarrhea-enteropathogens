@@ -9,7 +9,8 @@ rm(list=ls())
 
 # configure directories, load libraries and base functions
 source(paste0(here::here(), "/0-config.R"))
-library(rdrop2)
+## Use the librarian package to install and load the following libraries only used in this script
+shelf(rdrop2)
 
 #--------------------------------------------
 # set up Dropbox authentication
@@ -29,10 +30,9 @@ b_raw_baseline_path_box =  "washb-bangladesh-enrol.csv"
 #--------------------------------------
 ## load main survey diarrhea data 
 bd_main_diarr <- drop_read_csv("WASHB-Bangladesh-Data/1-primary-outcome-datasets/washb-bangladesh-diar.csv") %>%
-  mutate(#dataid = as.character(dataid),
-    svydate = as.Date(svydate, format = "%d%b%Y"), 
-    dob = as.Date(dob, format = "%d%b%Y"), 
-    cohort = "main diarrhea") %>%
+  mutate(svydate = as.Date(svydate, format = "%d%b%Y"), 
+         dob = as.Date(dob, format = "%d%b%Y"), 
+         cohort = "main diarrhea") %>%
   # Remove all children less than 6 months of age due to issues with accuracy of caregiver diarrhea for this age group
   filter(agedays > 182)
 
@@ -40,7 +40,6 @@ bd_main_diarr <- drop_read_csv("WASHB-Bangladesh-Data/1-primary-outcome-datasets
 bd_ee_diarr <- readRDS(paste0(raw_washb_path_box, b_raw_ee_diarrhea_path_box)) %>%
   rename(tchild = tChild) %>%
   mutate(cohort = "EE diarrhea", 
-         # dataid = as.character(dataid),
          sex = ifelse(sex == 0, "female", ifelse(sex == 1, "male", NA))) %>%
   # remove the EE baseline measurement because children are on average ~3mo and caregiver diarrhea reporting is not accurate for this age (lots of false positives)
   filter(svy != 3)
@@ -57,7 +56,6 @@ bd_diarr <- bd_main_diarr %>%
 bbase = read.csv(paste0(raw_washb_path_box, b_raw_baseline_path_box))
 
 bbase = bbase %>% 
-  # mutate(dataid = as.character(dataid)) %>%
   rename(date_baseline_svy = svydate)
 
 ## load additional animal variables from raw baseline bangladesh data
@@ -76,16 +74,17 @@ bbase = bbase %>%
               select(dataid, n_cow, n_goat, n_chkn), by = "dataid")
 
 
-
 #--------------------------------------
 # create PCA-based household asset/wealth index
 # using enrollment data
 #--------------------------------------
 # There are 2 important caveats to this calculation:
-# 1) This index is created on the baseline household survey data so does not capture changes over the course of the study or household wealth at the time of diarrhea/pathogen measurement.
-# 2) We assume that all households within a compound are in the same wealth quartile. Wealth index is calculated at the compound level using data from only 1 household 
-#   (because that's all we collected). For example, older children from another family in the compound that are included in the wbb_giardia or 
-#   wbb_sth datasets are assumed to have the same wealth index of the index child in that compound.
+# 1) This index is created on the baseline household survey data so does not capture changes over
+#     the course of the study or household wealth at the time of diarrhea/pathogen measurement.
+# 2) We assume that all households within a compound are in the same wealth quartile. Wealth 
+#     index is calculated at the compound level using data from only 1 household (because that's
+#     all we collected). For example, older children from another family in the compound that 
+#     are included are assumed to have the same wealth index of the index child in that compound.
 asset.vars <- c("roof","walls", "floor", "cement", "elec", "asset_radio", 
                 "asset_tvbw", "asset_tvcol", "asset_refrig", "asset_bike", 
                 "asset_moto", "asset_sewmach", "asset_phone", "asset_tv", 
@@ -116,15 +115,13 @@ midline_animal_data = drop_read_csv("/WASHB-Bangladesh-Data/0-Untouched-data/1-M
   select(dataid, q4114_1com, q4114_2com, q4114_3com) %>%
   rename(ncow_c = q4114_1com,
          ngoat_c = q4114_2com,
-         nchicken_c = q4114_3com) #%>%
-# mutate(dataid = as.character(dataid))
+         nchicken_c = q4114_3com) 
 
 endline_animal_data = drop_read_csv("/WASHB-Bangladesh-Data/0-Untouched-data/1-Main-survey/3_Endline/04. WASHB_Endline_main_survey_cleaned.csv") %>% 
   select(dataid, q4114_1com, q4114_2com, q4114_3com) %>%
   rename(ncow_c = q4114_1com,
          ngoat_c = q4114_2com,
-         nchicken_c = q4114_3com) #%>%
-# mutate(dataid = as.character(dataid))
+         nchicken_c = q4114_3com) 
 
 
 all_animal_data = baseline_animal_data %>% # matches main survey baseline data, svy == 0
@@ -223,3 +220,8 @@ bdata = left_join(bd_diarr, gps, by = c("dataid", "clusterid", "block")) %>%
 # Save clean data
 #--------------------------------------
 saveRDS(bdata, paste0(clean_washb_path_box, clean_bdata_diarr_box))
+
+#--------------------------------------
+# Capture session info
+#--------------------------------------
+sessionInfo()

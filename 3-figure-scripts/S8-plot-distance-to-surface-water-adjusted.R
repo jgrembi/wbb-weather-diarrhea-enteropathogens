@@ -174,3 +174,8 @@ disease_plot <- grid.arrange(aligned_plots, bacteria_plot + theme(legend.positio
 ggsave(combined_plot, filename = paste0(fig_dir, "S8-plot-distance-water-adjusted.tiff"), 
        width = 15, height = 8)
 
+
+#--------------------------------------
+# Capture session info
+#--------------------------------------
+sessionInfo()

@@ -32,7 +32,7 @@ rfit <- coeftest(res, vcovCL)[,] %>%
   as.data.frame %>%
   rownames_to_column()
 
-estimate <- rfit$Estimate[2]#coefficients(rfit)[2]
+estimate <- rfit$Estimate[2]
 SE <- rfit$`Std. Error`[2]
 PR <- exp(estimate)
 PR_lower <- exp(estimate - qnorm(0.975)*SE)

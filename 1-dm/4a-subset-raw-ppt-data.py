@@ -20,3 +20,9 @@ def subset_data(filename): # example filename: 201202.nc
 filenames = os.listdir(raw_ppt_data_folder)
 for filename in filenames:
     subset_data(filename)
+
+
+#--------------------------------------
+# Capture session info
+#--------------------------------------
+sessionInfo()

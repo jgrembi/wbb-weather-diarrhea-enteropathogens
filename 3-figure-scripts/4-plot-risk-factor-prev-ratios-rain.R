@@ -203,3 +203,8 @@ legend <- get_legend(legend_plot)
 ggsave(combined_plot, filename = paste0(fig_dir, "4-plot-precipitation-binary.tiff"), 
        width = 12, height = 12)
        
+
+#--------------------------------------
+# Capture session info
+#--------------------------------------
+sessionInfo()

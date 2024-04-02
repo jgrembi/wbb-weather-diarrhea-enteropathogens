@@ -62,7 +62,7 @@ season_defs = lapply(c(2012, 2013, 2014, 2015, 2016), find_season_dates) %>%
   mutate(start = as.Date(start),
          end = as.Date(end))
 
-write.csv(season_defs, "data/season_definitions.csv")
+write.csv(season_defs, "results/season_definitions.csv")
 
 
 rainy_season_plt = ggplot(ppt_rolling_avgs, aes(x = date, y = ppt_roll_avg)) + 
@@ -73,3 +73,8 @@ rainy_season_plt = ggplot(ppt_rolling_avgs, aes(x = date, y = ppt_roll_avg)) +
   ylab("5 Day Precipitation \nRolling Average (mm/d)")     
 
 ggsave(paste0(fig_dir, "0-empirical_rainy_season.png"), rainy_season_plt, width = 6, height = 3)
+
+#--------------------------------------
+# Capture session info
+#--------------------------------------
+sessionInfo()

@@ -7,7 +7,8 @@
 
 rm(list=ls())
 source(paste0(here::here(), "/0-config.R"))
-library(furrr)
+## Use the librarian package to install and load the following libraries only used in this script
+shelf(furrr)
 
 ## Read in raw  ppt data 
 ## This includes daily data for all 64 pixels comprising the study area for the duration of the study period
@@ -155,3 +156,8 @@ cutoffs = list(heavy_rain_cutoff = heavy_rain_cutoff_80th,
 
 
 saveRDS(cutoffs, paste0(box_data_path, "ppt_cutoffs.RDS")) 
+
+#--------------------------------------
+# Capture session info
+#--------------------------------------
+sessionInfo()

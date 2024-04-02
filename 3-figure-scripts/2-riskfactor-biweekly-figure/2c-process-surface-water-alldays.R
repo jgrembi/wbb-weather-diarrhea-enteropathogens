@@ -1,10 +1,9 @@
 #######################################
-# WASH Benefits 
-# spatial environmental risk factor analysis
+# WASH Benefits Bangladesh  
+# Hydrometeorological risk factors for diarrhea and enteropathogens
 
 # process surface water distance data 
-# to calculate weekly averages for all days, 
-# not just the days with study data. 
+# to calculate weekly averages. 
 # this will be used in the figure showing risk 
 # factors over time. 
 #######################################
@@ -96,3 +95,8 @@ surface_water_vars = c("prop_detected_any_surface_water_250",
 
 lapply(surface_water_vars, generate_surface_water_df)
 
+
+#--------------------------------------
+# Capture session info
+#--------------------------------------
+sessionInfo()

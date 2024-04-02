@@ -14,4 +14,4 @@ shelf(here, dplyr, ggcorrplot, tidyr, reshape2, ggplot2,
       viridis, caret, wrapr, pgirmess, tidyverse, kableExtra,
       rmarkdown, tictoc, doParallel, doRNG, parallel, foreach,
       magrittr, broom, lme4, rcartocolor, RColorBrewer, MetBrewer,
-      cowplot, patchwork)
+      cowplot, patchwork, ellipse)

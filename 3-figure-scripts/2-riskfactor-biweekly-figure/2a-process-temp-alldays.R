@@ -117,4 +117,8 @@ for (n in lag_times$num_weeks_lag){
 }
 
 
+#--------------------------------------
+# Capture session info
+#--------------------------------------
+sessionInfo()
 
