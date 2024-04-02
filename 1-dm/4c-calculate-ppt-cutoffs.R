@@ -7,8 +7,7 @@
 
 rm(list=ls())
 source(paste0(here::here(), "/0-config.R"))
-## Use the librarian package to install and load the following libraries only used in this script
-shelf(furrr)
+library(furrr)
 
 ## Read in raw  ppt data 
 ## This includes daily data for all 64 pixels comprising the study area for the duration of the study period

@@ -10,15 +10,44 @@
 #--------------------------------------------
 # Install (if not already installed) and load in libraries
 #--------------------------------------------
-library(librarian)
-
-shelf(here, dplyr, ggcorrplot, tidyr, reshape2, ggplot2,
-      grid, gridExtra, ben-arnold/washb, lubridate, stringr,
-      ncdf4, boxr, assertthat, mgcv, gamm4, DHARMa, purrr,
-      viridis, caret, wrapr, pgirmess, tidyverse, kableExtra,
-      rmarkdown, tictoc, doParallel, doRNG, parallel, foreach,
-      magrittr, broom, lme4, rcartocolor, RColorBrewer, MetBrewer,
-      cowplot)
+library(here)
+library(dplyr)
+library(ggcorrplot)
+library(tidyr)
+library(reshape2)
+library(ggplot2)
+library(grid)
+library(gridExtra)
+library(washb)
+library(lubridate)
+library(stringr)
+library(ncdf4) # for reading in terraclimate data
+library(boxr) # not functional on Sherlock
+library(assertthat)
+library(mgcv)
+library(gamm4)
+library(DHARMa)
+library(purrr)
+library(viridis)
+library(caret)
+# library(geoR)
+library(wrapr)
+library(pgirmess)
+library(tidyverse) 
+library(kableExtra)
+library(rmarkdown)
+library(tictoc)
+library(doParallel)
+library(doRNG)
+library(parallel)
+library(foreach)
+library(magrittr)
+library(broom)
+library(lme4)
+library(rcartocolor)
+library(RColorBrewer)
+library(MetBrewer)
+library(cowplot)
 
 # source base functions  
 source(paste0(here::here(), "/0-utils/0-base-functions.R"))

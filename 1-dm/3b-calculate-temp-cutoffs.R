@@ -10,9 +10,8 @@ rm(list=ls())
 
 # configure directories, load libraries and base functions
 source(paste0(here::here(), "/0-config.R"))
-## Use the librarian package to install and load the following libraries only used in this script
-shelf(future, future.apply)
-
+library(future)
+library(future.apply)
 
 all_daily_fldas_data = readRDS(paste0(box_data_path, "daily_temperatures_fldas.RDS"))
 all_daily_fldas_data = all_daily_fldas_data %>% dplyr::select(cells, temp, date) %>% distinct()

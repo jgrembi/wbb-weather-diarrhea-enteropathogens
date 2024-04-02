@@ -9,8 +9,8 @@ rm(list=ls())
 
 # configure directories, load libraries and base functions
 source(paste0(here::here(), "/0-config.R"))
-## Use the librarian package to install and load the following libraries only used in this script
-shelf(future, future.apply)
+library(future)
+library(future.apply)
 
 
 d_path = readRDS(paste0(clean_washb_path_box, clean_bdata_pathogen_box)) %>%
