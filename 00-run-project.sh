@@ -1,11 +1,11 @@
 #!/bin/bash
 
-#SBATCH --job-name=run-fit-models
+#SBATCH --job-name=run-project
 #SBATCH --begin=now
 #SBATCH --mail-type=ALL
 #SBATCH --cpus-per-task=10
 #SBATCH --mem=5G
-#SBATCH --output=00-run_fit_models_log.out
+#SBATCH --output=00-run_project_log.out
 #SBATCH --time=00:00:60
 #SBATCH --partition=relman
 
