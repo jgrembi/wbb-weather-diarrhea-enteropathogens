@@ -18,7 +18,7 @@ temp_vars <- list("temp_weekavg_1weeklag_C",
 # Temp ranges across study area for duration of study period
 #-----------------------------------------------------------------------------
 ##############################################################################
-temp_all_pixels = readRDS(paste0(box_data_path, "fldas_temp_cutoffs.RDS"))
+temp_all_pixels = readRDS(paste0(data_dir, "fldas_temp_cutoffs.RDS"))
 
 ## weekly average temps
 temp_all_pixels$avgtemp_7_days_range_inC
