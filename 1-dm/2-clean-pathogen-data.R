@@ -12,8 +12,7 @@ drop_last_char = function(x){
 
 ## configure directories, load libraries and base functions
 source(paste0(here::here(), "/0-config.R"))
-## Use the librarian package to install and load the following libraries only used in this script
-shelf(rdrop2)
+library(rdrop2)
 
 #--------------------------------------------
 # set up Box and Dropbox authentication
