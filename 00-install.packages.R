@@ -5,8 +5,8 @@
 # Install packages needed for analysis
 #######################################
 
-install.packages("Librarian")
-library(Librarian)
+install.packages("librarian")
+library(librarian)
 
 shelf(here, dplyr, ggcorrplot, tidyr, reshape2, ggplot2,
       grid, gridExtra, ben-arnold/washb, lubridate, stringr,

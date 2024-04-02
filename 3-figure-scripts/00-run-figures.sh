@@ -1,11 +1,11 @@
 #!/bin/bash
 
-#SBATCH --job-name=run-manuscript-stats
+#SBATCH --job-name=run-figures
 #SBATCH --begin=now
 #SBATCH --mail-type=ALL
 #SBATCH --cpus-per-task=10
 #SBATCH --mem=5G
-#SBATCH --output=01-run_manuscript_stats_log.out
+#SBATCH --output=01-run_figures_log.out
 #SBATCH --time=2:00:00
 #SBATCH --partition=relman
 
