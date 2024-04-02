@@ -9,7 +9,26 @@
 #SBATCH --time=00:00:60
 #SBATCH --partition=relman
 
+module --force purge
 
+module load math
+module load devel
+
+# load gcc, a C++ compiler (required for certain packages)
+module load gcc/10
+# module load system
+# module load readline/7.0
+
+# load R version 4.2.0 (required for certain packages)
+module load R/4.2.0
+#module load readline/7.0
+
+# load software required for spatial analyses in R
+ml physics gdal udunits proj geos cmake
+# module load system
+module load readline/7.0
+
+ml pandoc/2.7.3
 
 #######################################################################
 ## Install packages needed

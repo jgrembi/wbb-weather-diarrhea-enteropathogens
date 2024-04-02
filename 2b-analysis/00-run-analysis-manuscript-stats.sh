@@ -24,7 +24,7 @@ module load R/4.2.0
 #module load readline/7.0
 
 # load software required for spatial analyses in R
-ml physics gdal udunits proj geos
+ml physics gdal udunits proj geos cmake fribidi
 # module load system
 module load readline/7.0
 

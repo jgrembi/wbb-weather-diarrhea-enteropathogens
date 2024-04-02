@@ -86,6 +86,7 @@ temp_conversion_K_C = round(-273.15, 2)
 
 
 saveRDS(temp_cutoffs, paste0(box_data_path, "fldas_temp_cutoffs.RDS"))
+saveRDS(temp_cutoffs, paste0(data_dir, "fldas_temp_cutoffs.RDS"))
 
 #--------------------------------------
 # Capture session info
