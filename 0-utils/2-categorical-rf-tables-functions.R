@@ -15,13 +15,29 @@
 # @param outcome_colname column name of specific outcome
 #------------------------------------------------------
 
-# --------------------------------------------------
-# function to obtain the point estimate and confidence intervals for each 
-# results object using the model fit 
-# @param i indicates adjusted or unadjusted model
-# @param prev_level exposure level that has already been included in table
-# --------------------------------------------------
-get_mer_CI <- function(adj_unadj, fit, risk_factor, prev_level, data){
+
+###############################################
+# Function to obtain the point estimate and 95% confidence intervals from mer object of 
+# gamm4 output for categorical variables
+###############################################
+# Usage: get_mer_CI(adj_unadj = 1, fit = fit, risk_factor = "temp_weekavg_1weeklag_median", prev_level = NULL, data = data)
+# Description: Takes in a model fit and calculates the PR & 95 % CI (assuming that the model was fit with a log link) 
+#
+# Args/Options: 
+#   adj_unadj:    binary to indicate whether the model is unadjusted (1) or adjusted (2) 
+#   fit:          the model fit from the gamm4 output
+#   risk_factor:  character argument specifying the exposure varible (i.e. risk factor)
+#   prev_level:   optional argument identifying exposure level that has already been included in table 
+#                 [only used for exposure variables that have more than 2 levels] Default: NULL
+#   data:         the data used to fit the gamm4 model
+#
+# Returns: A data.frame with the prevalence ratio (PR), standard error (SE), calculated lower and upper bounds of 
+#          the 95% CI (PR.lower, PR.upper), the exposure level (RF_Type), whether analysis is adjusted or unadjusted (Group), 
+#          an 'analysis' of whether the results are significant or not and protective or increased risk (Analysis), 
+#          the number of observations used to fit the model (N), and the risk factor/exposure variable (risk_factor).
+# Output: none
+
+get_mer_CI <- function(adj_unadj = c(1, 2), fit, risk_factor, prev_level = NULL, data){
   
   group = ifelse(adj_unadj == 1, "Unadj.", "Adj.")
   
@@ -71,7 +87,22 @@ get_mer_CI <- function(adj_unadj, fit, risk_factor, prev_level, data){
 }
 
 
+###############################################
+# Function to get clean names for the categorical risk factors with 3 levels, which include: 
+#   distance_from_any_surface_water_tertile
+#   distance_from_seasonal_surface_water_tertile
+#   distance_from_ephemeral_surface_water_tertile
+###############################################
+# Usage: clean_title(title = "close water")
+# Description: Takes in a title obtained from the model fit for 3-level categorical variables and 
+# produces a more meaningful title that describes the risk factor level and comparator group for which the PR was calculated
 
+#
+# Args/Options: 
+#   title:    the title provided by the model fit based on the categorical risk factor levels ("close water", "medium distance water")
+#
+# Returns: A string describing the risk factor level and comparison group for which the PR is calculated.
+# Output: none
 clean_title <- function(title) {
   case_when(
    title == "close water" ~ "Close vs. Far",
@@ -83,7 +114,36 @@ clean_title <- function(title) {
 
 
 
+###############################################
+# Function to obtain the point estimate and 95% confidence intervals from mer object of 
+# gamm4 output for categorical variables and clean/format everything for publication quality 
+###############################################
+# Usage: make_table_row(outcome_subdir = "diarrhea-0", dirs_df = outcome_dirs_df, risk_factor = "heavyrain_1weeklag",
+#                       risk_factor_label = "Heavy Rain, 1 Week Lag", outcome = "gam_diar7d_0", 
+#                       outcome_colname = "diar7d", outcome_label = "7-Day Diarrhea, Control Arm")
+# Description: Reads in model fit object from the fit_gam function for categorical variables and 
+# generates a table row describing the PR, 95% CI and other information 
 
+#
+# Args/Options: 
+#   outcome_subdir:     the title provided by the model fit based on the categorical risk factor levels ("close water", "medium distance water")
+#   dirs_df:            a data.frame containing filepaths to all directories containing adjusted and unadjusted model outputs
+#   risk_factor:        character string indicating the risk factor variable name from the dataset
+#   risk_factor_label:  character string indicating the 'clean' name of the risk factor used for the manuscript
+#   outcome:            character string indicating the outcome variable with "gam_" in front of it (in accordance with filenaming convention for this project)
+#   outcome_colname:    character string indicating the outcome variable
+#   outcome_label:      character string indicating the 'clean' name of the outcome used for the manuscript
+
+# Returns: A data.frame of 1- 2 rows containing the following variables:
+#           The Outcome (e.g. diarrhea/pathogen prevalence), clean version of the risk factor name (RF), 
+#           prevalence ratio (PR), standard error (SE), calculated lower and upper bounds of the 95% 
+#           CI (PR.lower, PR.upper), the exposure level (RF_Type), whether analysis is adjusted or 
+#           unadjusted (Group), an 'analysis' of whether the results are significant or not and protective 
+#           or increased risk (Analysis), the number of observations used to fit the model (N), the risk 
+#           factor/exposure variable (risk_factor), and the name of the gamm4 model fit results file 
+#           where the results were obtained (filename). 
+#           2 rows are provided when the exposure variable/risk factor has more than 2 levels.
+# Output: none
 make_table_row <- function(outcome_subdir, 
                            dirs_df,
                            risk_factor, risk_factor_label,
@@ -131,7 +191,6 @@ make_table_row <- function(outcome_subdir,
     
     #------------------------------------------------------
     # Outcomes with no spatial autocorrelation will use a separate gam fit object
-    # Error: land_use_type has no gam fit or spatial gam fit object
     #------------------------------------------------------
     
     if (!any(is.na(x$spatial_gam_fit))) {
@@ -187,42 +246,39 @@ make_table_row <- function(outcome_subdir,
     if(!risk_factor %in% c("distance_from_any_surface_water_tertile",
                            "distance_from_seasonal_surface_water_tertile",     
                            "distance_from_ephemeral_surface_water_tertile")) {
-      table_row <- rbind(table_row, df_1)
+      table_row <- bind_rows(table_row, df_1)
     } else {
       #------------------------------------------------------
       # Assemble the table rows for risk factors with 3 levels
       #------------------------------------------------------
-      table_row <- rbind(table_row, df_1)
-      table_row <- rbind(table_row, df_2)
+      table_row <- bind_rows(table_row, df_1)
+      table_row <- bind_rows(table_row, df_2)
     }
   }
-  # path_type <- add_pathogen_category(table_row, paste0(outcome_colname, "_"))
-  # table_row <- cbind(table_row, path_type)
   
   return(table_row)
 }
 
-# # --------------------------------------------------
-# # function to obtain the point estimate and confidence intervals for categorical risk factors  
-# # results object using the glm model fit (when gamm4 results had tiny SEs) 
-# # --------------------------------------------------
-# ##############################################
-# ##############################################
-# # Documentation: get_pr_ci
-# # Usage: get_pr_ci(estimate, SE, model_family)
-# # Description: Gets the prevalence ratio and 95% CI for categorical risk factors against outcome 
-# #             This function was specifically written to get the PR and CI from the output by the glm call used in the fit_clustered_glm function 
-# #             which was used when there were issues with the gamm4 model fit having tiny SE due to likely convergence issues
-# 
-# # Args/Options:
-# # estimate:       the coefficient for the appropriate variable from the model fit output by the glm call 
-# # SE:             the se for the appropriate variable from the model fit output by the glm call 
-# # model_family:   the family used for the model, so estimates and SEs can be appropriately transformed
-# #
-# # Returns:        A data.frame with the estimate and standard error (SE) formatted as a text object, 
-# #                 prevalence ratio (PR), and lower (PR_lower) and upper (PR_upper) bounds of the 95% CI 
-# # Output:             none
-# 
+
+##############################################
+# Obtain the point estimate and confidence intervals for categorical risk factors
+# results object using the glm model fit (when gamm4 results had tiny SEs)
+##############################################
+# Documentation: get_pr_ci
+# Usage: get_pr_ci(estimate, SE, model_family)
+# Description: Gets the prevalence ratio and 95% CI for categorical risk factors against outcome
+#             This function was specifically written to get the PR and CI from the output by the glm call used in the fit_clustered_glm function
+#             which was used when there were issues with the gamm4 model fit having tiny SE due to likely convergence issues
+
+# Args/Options:
+# estimate:       the coefficient for the appropriate variable from the model fit output by the glm call
+# SE:             the se for the appropriate variable from the model fit output by the glm call
+# model_family:   the family used for the model, so estimates and SEs can be appropriately transformed
+#
+# Returns:        A data.frame with the estimate and standard error (SE) formatted as a text object,
+#                 prevalence ratio (PR), and lower (PR_lower) and upper (PR_upper) bounds of the 95% CI
+# Output:             none
+
 get_pr_ci <- function(estimate, SE, model_family) {
   if(model_family$link == "log"){
     out <- data.frame(
