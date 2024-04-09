@@ -35,7 +35,6 @@
 # Returns: A data.frame with dataid, union, and HHwealth_quart
 # Output: none
 
-
 assetPCA<-function(dfull, varlist, reorder=F){
   
   varlist<-c("dataid", "union", varlist)
@@ -724,8 +723,8 @@ fit_gam = function(df, y, a, w = NULL, y_per_variable = 10, random_intercept = c
 
 ###############################################
 # fit_gam function for models with interaction terms
-# Should eventually be merged with the above, but I had insufficient time
-#  to test this and ensure it didn't break any of the above code so it's still separate.
+# Should eventually be merged with the above after testing to ensure it 
+# doesn't break any of the above code.
 #   Main differences include that 
 #   1) the interaction term is added to the sparsity check
 #   2) an interaction term is added to the formula, 
