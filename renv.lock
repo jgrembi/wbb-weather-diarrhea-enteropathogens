@@ -2775,7 +2775,7 @@
     },
     "raster": {
       "Package": "raster",
-      "Version": "3.6-3",
+      "Version": "3.6-26",
       "Source": "Repository",
       "Repository": "CRAN",
       "Requirements": [
@@ -2785,7 +2785,7 @@
         "sp",
         "terra"
       ],
-      "Hash": "d550f9d6dbb4dce7cbd146b09d663343"
+      "Hash": "7d6eda494f34a644420ac1bfd2a8023a"
     },
     "rcartocolor": {
       "Package": "rcartocolor",
@@ -3395,7 +3395,7 @@
     },
     "terra": {
       "Package": "terra",
-      "Version": "1.6-17",
+      "Version": "1.7-71",
       "Source": "Repository",
       "Repository": "CRAN",
       "Requirements": [
@@ -3403,7 +3403,7 @@
         "Rcpp",
         "methods"
       ],
-      "Hash": "3e264754dde87261bc7ccdb30d29d3b4"
+      "Hash": "e8611881ab70a4fb7a1f629b31e6fcff"
     },
     "testthat": {
       "Package": "testthat",
