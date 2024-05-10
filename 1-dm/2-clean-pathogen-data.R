@@ -228,7 +228,7 @@ bdata = bdata %>%
 # remove extra covariates
 #--------------------------------------
 bdata = bdata %>%
-  select(-(dadagri:hwsws))
+  select(-(dadagri:hwsws), -st_date2)
 
 
 #--------------------------------------
