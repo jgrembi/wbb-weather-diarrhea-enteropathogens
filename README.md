@@ -1,5 +1,5 @@
 # wbb-weather-diarrhea-enteropathogens
-# The influence of hydrometeorological risk factors on diarrheal disease and enteropathogen carriage among young children in rural Bangladesh
+## The influence of hydrometeorological risk factors on diarrheal disease and enteropathogen carriage among young children in rural Bangladesh
 
 This repository contains replication scripts for the paper:
 
