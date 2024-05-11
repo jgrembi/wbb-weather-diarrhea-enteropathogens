@@ -11,7 +11,7 @@ Grembi JA, Nguyen AT, Riviere M, et al. **Influence of hydrometeorological risk 
 Several files associated with this project are available on the Open Science Framework.  
 The main project folder is located at [https://osf.io/yt67k/](https://osf.io/yt67k/). 
 
-The main project folder also contains reproducible workflow documentation for a companion manuscript that you should check out(!):
+This main folder also contains reproducible workflow documentation for a companion manuscript that you should check out(!):
 
 Nguyen AT, Grembi JA, Riviere M, et al. **Influence of Temperature and Precipitation on the Effectiveness of Water, Sanitation, and Handwashing Interventions against Childhood Diarrheal Disease in Rural Bangladesh: A Reanalysis of the WASH Benefits Bangladesh Trial**. _Environmental Health Perspectives_ **2024** 132(4):047006.
 [https://doi.org/10.1289/EHP13807](https://doi.org/10.1289/EHP13807) 
