@@ -3,7 +3,7 @@
 
 This repository contains replication scripts for the paper:
 
-Grembi JA, Nguyen AT, Riviere M, et al. **Influence of hydrometeorological risk factors on child diarrhea and enteropathogens in rural Bangladesh**. _PLOS Neglected Tropical Diseases_ **2024** 18(5): e0012157.
+Grembi JA, Nguyen AT, Riviere M, et al. (2024) **Influence of hydrometeorological risk factors on child diarrhea and enteropathogens in rural Bangladesh**. _PLOS Neglected Tropical Diseases_ 18(5): e0012157.
 [https://doi.org/10.1371/journal.pntd.0012157](https://doi.org/10.1371/journal.pntd.0012157)
 
 
@@ -13,7 +13,7 @@ The main project folder is located at [https://osf.io/yt67k/](https://osf.io/yt6
 
 This main folder also contains reproducible workflow documentation for a companion manuscript that you should check out:
 
-Nguyen AT, Grembi JA, Riviere M, et al. **Influence of Temperature and Precipitation on the Effectiveness of Water, Sanitation, and Handwashing Interventions against Childhood Diarrheal Disease in Rural Bangladesh: A Reanalysis of the WASH Benefits Bangladesh Trial**. _Environmental Health Perspectives_ **2024** 132(4):047006.
+Nguyen AT, Grembi JA, Riviere M, et al. (2024) **Influence of Temperature and Precipitation on the Effectiveness of Water, Sanitation, and Handwashing Interventions against Childhood Diarrheal Disease in Rural Bangladesh: A Reanalysis of the WASH Benefits Bangladesh Trial**. _Environmental Health Perspectives_ 132(4):047006.
 [https://doi.org/10.1289/EHP13807](https://doi.org/10.1289/EHP13807) 
 
 ### Analysis plan
