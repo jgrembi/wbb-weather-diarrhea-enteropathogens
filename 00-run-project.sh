@@ -33,23 +33,23 @@ ml pandoc/2.7.3
 #######################################################################
 ## Install packages needed
 #######################################################################
-R CMD BATCH --no-save 00-install.packages.R 0-install.packages.Rout
+#R CMD BATCH --no-save 00-install.packages.R 0-install.packages.Rout
 
 
 
 #######################################################################
 ## Run pre-processing scripts to make all clean data.frames for analysis
 #######################################################################
-
+sbatch 1-dm/00-1-process-raw-data.sh
 #######################################################################
 ## Run model fits
 #######################################################################
-
+sbatch 2a-run-models/00-2-run-fit-models.sh
 
 #######################################################################
 ## Run manuscript statistics from results section
 #######################################################################
-sbatch 2b-analysis/00-run-analysis-manuscript-stats.sh
+sbatch 2b-analysis/00-3-run-analysis-manuscript-stats.sh
 
 #######################################################################
 ## Run manuscript figures
