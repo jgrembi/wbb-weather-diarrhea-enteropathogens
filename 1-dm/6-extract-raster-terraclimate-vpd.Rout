@@ -1,0 +1,342 @@
+
+R version 4.2.0 (2022-04-22) -- "Vigorous Calisthenics"
+Copyright (C) 2022 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin17.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+- Project '~/Dropbox/08_JadeCollaboration/wbb-weather-diarrhea-enteropathogens' loaded. [renv 1.0.5]
+> #######################################
+> # WASH Benefits Bangladesh  
+> # Hydrometeorological risk factors for diarrhea and enteropathogens
+> 
+> # Construct humidity (vapor pressure deficit) variable for analysis
+> 
+> # extract terraclimate raster data to
+> # each lat/long coordinate
+> # Variables:  vapor pressue deficit (kPa)
+> # Input File Directories:
+> # - data/vpd-data
+> # Output Files
+> # - data/washb-bangladesh-vpd.RDS
+> # Data Source: http://www.climatologylab.org/terraclimate.html
+> #######################################
+> 
+> rm(list=ls())
+> 
+> # configure directories, load libraries and base functions
+> source(paste0(here::here(), "/0-config.R"))
+here() starts at /Users/JGrembi/Dropbox/08_JadeCollaboration/wbb-weather-diarrhea-enteropathogens
+
+Attaching package: ‘dplyr’
+
+The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+Loading required package: ggplot2
+
+Attaching package: ‘reshape2’
+
+The following object is masked from ‘package:tidyr’:
+
+    smiths
+
+
+Attaching package: ‘gridExtra’
+
+The following object is masked from ‘package:dplyr’:
+
+    combine
+
+Welcome to the washb package
+Version: 0.2.2
+Created on 2018-11-07
+
+This software was developed with funding from the
+Bill & Melinda Gates Foundation (grant number OPPGD759).
+
+The package's reference manual and vignette are also online:
+https://ben-arnold.github.io/washb
+
+
+Attaching package: ‘lubridate’
+
+The following objects are masked from ‘package:base’:
+
+    date, intersect, setdiff, union
+
+Loading required package: nlme
+
+Attaching package: ‘nlme’
+
+The following object is masked from ‘package:dplyr’:
+
+    collapse
+
+This is mgcv 1.8-40. For overview type 'help("mgcv-package")'.
+Loading required package: Matrix
+
+Attaching package: ‘Matrix’
+
+The following objects are masked from ‘package:tidyr’:
+
+    expand, pack, unpack
+
+Loading required package: lme4
+
+Attaching package: ‘lme4’
+
+The following object is masked from ‘package:nlme’:
+
+    lmList
+
+This is gamm4 0.2-6
+
+This is DHARMa 0.4.6. For overview type '?DHARMa'. For recent changes, type news(package = 'DHARMa')
+Loading required package: viridisLite
+Loading required package: lattice
+
+Attaching package: ‘caret’
+
+The following object is masked from ‘package:purrr’:
+
+    lift
+
+
+Attaching package: ‘wrapr’
+
+The following objects are masked from ‘package:Matrix’:
+
+    pack, unpack
+
+The following object is masked from ‘package:mgcv’:
+
+    %.%
+
+The following objects are masked from ‘package:tidyr’:
+
+    pack, unpack
+
+The following object is masked from ‘package:dplyr’:
+
+    coalesce
+
+── Attaching packages ─────────────────────────────────────── tidyverse 1.3.2 ──
+✔ tibble  3.2.1     ✔ forcats 0.5.2
+✔ readr   2.1.3     
+── Conflicts ────────────────────────────────────────── tidyverse_conflicts() ──
+✖ lubridate::as.difftime() masks base::as.difftime()
+✖ wrapr::coalesce()        masks dplyr::coalesce()
+✖ nlme::collapse()         masks dplyr::collapse()
+✖ gridExtra::combine()     masks dplyr::combine()
+✖ lubridate::date()        masks base::date()
+✖ Matrix::expand()         masks tidyr::expand()
+✖ dplyr::filter()          masks stats::filter()
+✖ tibble::has_name()       masks assertthat::has_name()
+✖ lubridate::intersect()   masks base::intersect()
+✖ dplyr::lag()             masks stats::lag()
+✖ caret::lift()            masks purrr::lift()
+✖ wrapr::pack()            masks Matrix::pack(), tidyr::pack()
+✖ lubridate::setdiff()     masks base::setdiff()
+✖ lubridate::union()       masks base::union()
+✖ wrapr::unpack()          masks Matrix::unpack(), tidyr::unpack()
+✖ tibble::view()           masks wrapr::view()
+
+Attaching package: ‘kableExtra’
+
+The following object is masked from ‘package:dplyr’:
+
+    group_rows
+
+Loading required package: foreach
+
+Attaching package: ‘foreach’
+
+The following objects are masked from ‘package:purrr’:
+
+    accumulate, when
+
+Loading required package: iterators
+Loading required package: parallel
+Loading required package: rngtools
+
+Attaching package: ‘magrittr’
+
+The following object is masked from ‘package:purrr’:
+
+    set_names
+
+The following object is masked from ‘package:tidyr’:
+
+    extract
+
+
+Attaching package: ‘cowplot’
+
+The following object is masked from ‘package:lubridate’:
+
+    stamp
+
+> library(geosphere)
+> 
+> d_path = readRDS(paste0(clean_washb_path_box, clean_bdata_pathogen_box)) %>%
++   filter(!is.na(qgpslong), !is.na(date))
+> ll_path = d_path %>% 
++   dplyr::select(qgpslong, qgpslat)
+> 
+> d_diarr = readRDS(paste0(clean_washb_path_box, clean_bdata_diarr_box)) %>%
++   filter(!is.na(qgpslong), !is.na(date))
+> ll_diarr = d_diarr %>% 
++   dplyr::select(qgpslong, qgpslat)
+> 
+> ll = rbind(ll_path, ll_diarr) %>% 
++   distinct()
+> 
+> #-----------------------------------------------------
+> # define function to read in data from TerraClimate
+> #-----------------------------------------------------
+> process_terraclimate = function(var, coords, year){
++   filename <- paste0(box_data_path, var, "-data/TerraClimate_", var, "_",
++                      year, ".nc")
++   x = as.numeric(coords)
++   
++   nc <- nc_open(filename)
++   lon <- ncvar_get(nc, "lon")
++   lat <- ncvar_get(nc, "lat")
++   
++   flat = match(abs(lat - x[2]) < 1/48, 1)
++   latindex = which(flat %in% 1)
++   lat_match = lat[latindex]
++   
++   flon = match(abs(lon - x[1]) < 1/48, 1)
++   lonindex = which(flon %in% 1)
++   long_match = lon[lonindex]
++   start <- c(lonindex, latindex, 1)
++   count <- c(1, 1, -1)
++   
++   distance = distm(c(long_match, lat_match), x, fun = distHaversine)
++   
++   # read in the full period of record using aggregated files
++   data <- as.numeric(ncvar_get(nc, varid = var,start = start, count))
++   data = data %>% append(distance)
++   return(data)
++ }
+> 
+> compile_terraclimate = function(latlong, var, year){
++   #latlong = ll # temp, to speed up computations for testing 
++   print(year)
++   raw = apply(latlong,1, function(x) process_terraclimate(
++     var = var, coords = x, year = year))
++   raw_df = as.data.frame(raw)
++   
++   generate_terraclimate_table = function(month){
++     tbl = as.data.frame(cbind(latlong[1], latlong[2], month, year, t(raw_df[month, ]), t(raw_df[13, ])))
++     colnames(tbl) = c("qgpslong", "qgpslat", "month", "year", var, "distance_from_source")
++     return(tbl)
++   }
++ 
++   df = lapply(1:12, generate_terraclimate_table) %>% bind_rows()
++   
++   return (df)
++ }
+> 
+> #-----------------------------------------------------
+> # read in data from TerraClimate
+> #-----------------------------------------------------
+> vpd = lapply(c(2012, 2013, 2014, 2015, 2016),
++              function(x) compile_terraclimate(latlong = ll, var = "vpd", year = x)) %>%
++   bind_rows()
+[1] 2012
+[1] 2013
+[1] 2014
+[1] 2015
+[1] 2016
+> 
+> saveRDS(vpd, paste0(box_data_path, "washb-bangladesh-vpd.RDS"))
+> 
+> #--------------------------------------
+> # Capture session info
+> #--------------------------------------
+> sessionInfo()
+R version 4.2.0 (2022-04-22)
+Platform: x86_64-apple-darwin17.0 (64-bit)
+Running under: macOS Big Sur/Monterey 10.16
+
+Matrix products: default
+BLAS:   /Library/Frameworks/R.framework/Versions/4.2/Resources/lib/libRblas.0.dylib
+LAPACK: /Library/Frameworks/R.framework/Versions/4.2/Resources/lib/libRlapack.dylib
+
+locale:
+[1] en_US.UTF-8/en_US.UTF-8/en_US.UTF-8/C/en_US.UTF-8/en_US.UTF-8
+
+attached base packages:
+[1] parallel  grid      stats     graphics  grDevices datasets  utils    
+[8] methods   base     
+
+other attached packages:
+ [1] geosphere_1.5-14   cowplot_1.1.1      MetBrewer_0.2.0    RColorBrewer_1.1-3
+ [5] rcartocolor_2.0.0  broom_1.0.5        magrittr_2.0.3     doRNG_1.8.2       
+ [9] rngtools_1.5.2     doParallel_1.0.17  iterators_1.0.14   foreach_1.5.2     
+[13] tictoc_1.1         rmarkdown_2.25     kableExtra_1.3.4   forcats_0.5.2     
+[17] readr_2.1.3        tibble_3.2.1       tidyverse_1.3.2    pgirmess_2.0.0    
+[21] wrapr_2.0.9        caret_6.0-93       lattice_0.20-45    viridis_0.6.4     
+[25] viridisLite_0.4.2  purrr_1.0.2        DHARMa_0.4.6       gamm4_0.2-6       
+[29] lme4_1.1-35.1      Matrix_1.6-4       mgcv_1.8-40        nlme_3.1-160      
+[33] assertthat_0.2.1   boxr_0.3.6         ncdf4_1.19         stringr_1.5.1     
+[37] lubridate_1.8.0    washb_0.2.2        gridExtra_2.3      reshape2_1.4.4    
+[41] tidyr_1.3.0        ggcorrplot_0.1.4   ggplot2_3.4.4      dplyr_1.1.4       
+[45] here_1.0.1        
+
+loaded via a namespace (and not attached):
+ [1] readxl_1.4.3         backports_1.4.1      systemfonts_1.0.4   
+ [4] plyr_1.8.9           sp_1.5-0             splines_4.2.0       
+ [7] listenv_0.8.0        digest_0.6.33        htmltools_0.5.7     
+[10] fansi_1.0.6          googlesheets4_1.0.1  tzdb_0.3.0          
+[13] recipes_1.0.2        globals_0.16.1       modelr_0.1.9        
+[16] gower_1.0.0          svglite_2.1.0        hardhat_1.2.0       
+[19] colorspace_2.1-0     rvest_1.0.3          haven_2.5.1         
+[22] xfun_0.41            crayon_1.5.2         jsonlite_1.8.8      
+[25] survival_3.4-0       glue_1.6.2           gtable_0.3.4        
+[28] gargle_1.2.1         ipred_0.9-13         webshot_0.5.4       
+[31] future.apply_1.9.1   scales_1.3.0         DBI_1.1.3           
+[34] Rcpp_1.0.11          spData_2.2.0         units_0.8-0         
+[37] spdep_1.2-7          proxy_0.4-27         stats4_4.2.0        
+[40] lava_1.6.10          prodlim_2019.11.13   httr_1.4.7          
+[43] wk_0.7.0             pkgconfig_2.0.3      nnet_7.3-18         
+[46] dbplyr_2.2.1         deldir_1.0-6         utf8_1.2.4          
+[49] tidyselect_1.2.0     rlang_1.1.2          munsell_0.5.0       
+[52] cellranger_1.1.0     tools_4.2.0          cli_3.6.2           
+[55] generics_0.1.3       evaluate_0.23        fastmap_1.1.1       
+[58] yaml_2.3.7           ModelMetrics_1.2.2.2 knitr_1.45.8        
+[61] fs_1.6.3             s2_1.1.0             future_1.28.0       
+[64] xml2_1.3.3           compiler_4.2.0       rstudioapi_0.14     
+[67] e1071_1.7-11         reprex_2.0.2         stringi_1.8.2       
+[70] classInt_0.4-8       nloptr_2.0.3         vctrs_0.6.5         
+[73] pillar_1.9.0         lifecycle_1.0.4      data.table_1.14.10  
+[76] R6_2.5.1             renv_1.0.5           KernSmooth_2.23-20  
+[79] parallelly_1.32.1    codetools_0.2-18     boot_1.3-28         
+[82] MASS_7.3-58.1        rprojroot_2.0.4      withr_2.5.2         
+[85] hms_1.1.3            rpart_4.1.16         timeDate_4021.106   
+[88] class_7.3-20         minqa_1.2.6          googledrive_2.0.0   
+[91] sf_1.0-12            pROC_1.18.0         
+> 
+> proc.time()
+    user   system  elapsed 
+1503.933  288.895 1818.804 
