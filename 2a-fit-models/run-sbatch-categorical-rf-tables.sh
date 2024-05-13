@@ -27,6 +27,6 @@ ml system
 
 ml pandoc/2.7.3
 
-cd 2-analysis/
+#cd 2a-fit-models/
 
 R CMD BATCH --no-save 1-categorical-rf-tables.R

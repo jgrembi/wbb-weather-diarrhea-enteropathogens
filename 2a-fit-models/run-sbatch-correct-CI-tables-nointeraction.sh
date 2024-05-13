@@ -27,6 +27,6 @@ ml system
 
 ml pandoc/2.7.3
 
-cd 2-analysis/
+# cd 2-analysis/
 
 R CMD BATCH --no-save 3-correct-CI-tables-nointeraction-diarrhea-pathogens.R
