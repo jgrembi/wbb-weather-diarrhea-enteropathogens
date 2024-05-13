@@ -58,10 +58,10 @@ source(paste0(here::here(), "/0-utils/0-base-functions.R"))
 fig_dir = paste0(here::here(),"/4-figures/")
 tab_dir = paste0(here::here(),"/6-tables/")
 data_dir = paste0(here::here(), "/data/")
-results_path = paste0(here::here(), "/results/")
+
 
 gam_check_template_rmd = paste0(here::here(), "/3-figure-scripts/model_fit_output.Rmd")
-rainy_seasons_path = paste0(results_path, "season_definitions.csv")
+rainy_seasons_path = paste0(data_dir, "season_definitions.csv")
 
 
 #--------------------------------------------
@@ -90,8 +90,6 @@ local_box_path = "WBB-mapping-Stanford/"
 #--------------------------------------------
 if(Sys.getenv("LMOD_SYSHOST") == "sherlock"){
   sherlock_path = here::here()
-  # data_path = paste0(sherlock_path, "data/")
-  # results_path = paste0(sherlock_path, "results/")
   local_root_path = sherlock_path
   sherlock_results_dir = "/home/groups/jadebc/wbb-mapping-data/results/"
 }

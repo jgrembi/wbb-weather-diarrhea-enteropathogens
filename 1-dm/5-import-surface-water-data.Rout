@@ -1,0 +1,412 @@
+
+R version 4.2.0 (2022-04-22) -- "Vigorous Calisthenics"
+Copyright (C) 2022 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin17.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+- Project '~/Dropbox/08_JadeCollaboration/wbb-weather-diarrhea-enteropathogens' loaded. [renv 1.0.5]
+> #######################################
+> # WASH Benefits Bangladesh  
+> # Hydrometeorological risk factors for diarrhea and enteropathogens
+> 
+> # Construct surface water variables for analysis
+> 
+> # Variables: 
+> # - distance_from_*_surface_water: distance (in meters) from any, seasonal, or ephemeral surface water
+> # - prop_detected_*_* + n_detected_*_N: number/proportion of pixels within N meter radius covered by any, seasonal, or ephemeral surface water
+> # Input File Directories:
+> # - data/occurrence.tif
+> # - data/transition.tif
+> 
+> # Output Files
+> # - data/washb-bangladesh-distance_from_surface_water.RDS
+> # Data Source: https://global-surface-water.appspot.com/
+> #######################################
+> 
+> rm(list=ls())
+> 
+> # configure directories, load libraries and base functions
+> source(paste0(here::here(), "/0-config.R"))
+here() starts at /Users/JGrembi/Dropbox/08_JadeCollaboration/wbb-weather-diarrhea-enteropathogens
+
+Attaching package: ‘dplyr’
+
+The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+Loading required package: ggplot2
+
+Attaching package: ‘reshape2’
+
+The following object is masked from ‘package:tidyr’:
+
+    smiths
+
+
+Attaching package: ‘gridExtra’
+
+The following object is masked from ‘package:dplyr’:
+
+    combine
+
+Welcome to the washb package
+Version: 0.2.2
+Created on 2018-11-07
+
+This software was developed with funding from the
+Bill & Melinda Gates Foundation (grant number OPPGD759).
+
+The package's reference manual and vignette are also online:
+https://ben-arnold.github.io/washb
+
+
+Attaching package: ‘lubridate’
+
+The following objects are masked from ‘package:base’:
+
+    date, intersect, setdiff, union
+
+Loading required package: nlme
+
+Attaching package: ‘nlme’
+
+The following object is masked from ‘package:dplyr’:
+
+    collapse
+
+This is mgcv 1.8-40. For overview type 'help("mgcv-package")'.
+Loading required package: Matrix
+
+Attaching package: ‘Matrix’
+
+The following objects are masked from ‘package:tidyr’:
+
+    expand, pack, unpack
+
+Loading required package: lme4
+
+Attaching package: ‘lme4’
+
+The following object is masked from ‘package:nlme’:
+
+    lmList
+
+This is gamm4 0.2-6
+
+This is DHARMa 0.4.6. For overview type '?DHARMa'. For recent changes, type news(package = 'DHARMa')
+Loading required package: viridisLite
+Loading required package: lattice
+
+Attaching package: ‘caret’
+
+The following object is masked from ‘package:purrr’:
+
+    lift
+
+
+Attaching package: ‘wrapr’
+
+The following objects are masked from ‘package:Matrix’:
+
+    pack, unpack
+
+The following object is masked from ‘package:mgcv’:
+
+    %.%
+
+The following objects are masked from ‘package:tidyr’:
+
+    pack, unpack
+
+The following object is masked from ‘package:dplyr’:
+
+    coalesce
+
+── Attaching packages ─────────────────────────────────────── tidyverse 1.3.2 ──
+✔ tibble  3.2.1     ✔ forcats 0.5.2
+✔ readr   2.1.3     
+── Conflicts ────────────────────────────────────────── tidyverse_conflicts() ──
+✖ lubridate::as.difftime() masks base::as.difftime()
+✖ wrapr::coalesce()        masks dplyr::coalesce()
+✖ nlme::collapse()         masks dplyr::collapse()
+✖ gridExtra::combine()     masks dplyr::combine()
+✖ lubridate::date()        masks base::date()
+✖ Matrix::expand()         masks tidyr::expand()
+✖ dplyr::filter()          masks stats::filter()
+✖ tibble::has_name()       masks assertthat::has_name()
+✖ lubridate::intersect()   masks base::intersect()
+✖ dplyr::lag()             masks stats::lag()
+✖ caret::lift()            masks purrr::lift()
+✖ wrapr::pack()            masks Matrix::pack(), tidyr::pack()
+✖ lubridate::setdiff()     masks base::setdiff()
+✖ lubridate::union()       masks base::union()
+✖ wrapr::unpack()          masks Matrix::unpack(), tidyr::unpack()
+✖ tibble::view()           masks wrapr::view()
+
+Attaching package: ‘kableExtra’
+
+The following object is masked from ‘package:dplyr’:
+
+    group_rows
+
+Loading required package: foreach
+
+Attaching package: ‘foreach’
+
+The following objects are masked from ‘package:purrr’:
+
+    accumulate, when
+
+Loading required package: iterators
+Loading required package: parallel
+Loading required package: rngtools
+
+Attaching package: ‘magrittr’
+
+The following object is masked from ‘package:purrr’:
+
+    set_names
+
+The following object is masked from ‘package:tidyr’:
+
+    extract
+
+
+Attaching package: ‘cowplot’
+
+The following object is masked from ‘package:lubridate’:
+
+    stamp
+
+> library(raster)
+Loading required package: sp
+
+Attaching package: ‘raster’
+
+The following object is masked from ‘package:lme4’:
+
+    getData
+
+The following object is masked from ‘package:nlme’:
+
+    getData
+
+The following object is masked from ‘package:dplyr’:
+
+    select
+
+> library(geosphere)
+> library(pracma)
+
+Attaching package: ‘pracma’
+
+The following object is masked from ‘package:geosphere’:
+
+    geomean
+
+The following objects are masked from ‘package:magrittr’:
+
+    and, mod, or
+
+The following objects are masked from ‘package:tictoc’:
+
+    clear, size, tic, toc
+
+The following object is masked from ‘package:purrr’:
+
+    cross
+
+The following objects are masked from ‘package:Matrix’:
+
+    expm, lu, tril, triu
+
+The following object is masked from ‘package:mgcv’:
+
+    magic
+
+> library(matrixStats)
+
+Attaching package: ‘matrixStats’
+
+The following object is masked from ‘package:dplyr’:
+
+    count
+
+> 
+> d_path = readRDS(paste0(clean_washb_path_box, clean_bdata_pathogen_box)) %>%
++   filter(!is.na(qgpslong), !is.na(date))
+> ll_path = d_path %>% 
++   dplyr::select(qgpslong, qgpslat)
+> 
+> d_diarr = readRDS(paste0(clean_washb_path_box, clean_bdata_diarr_box)) %>%
++   filter(!is.na(qgpslong), !is.na(date))
+> ll_diarr = d_diarr %>% 
++   dplyr::select(qgpslong, qgpslat)
+> 
+> ll = rbind(ll_path, ll_diarr) %>% 
++   distinct()
+> 
+> 
+> any_surface_water_raster = raster(paste0(box_data_path, "occurrence.tif"))
+> any_surface_water_raster[any_surface_water_raster[] == 0] = NA 
+> any_surface_water_raster[any_surface_water_raster[] == 255] = NA
+> any_surface_water = rasterToPoints(any_surface_water_raster)
+> any_surface_water = SpatialPoints(any_surface_water[, 1:2], proj4string=CRS('+proj=longlat +datum=WGS84'))
+> 
+> permanent_water_raster = seasonal_surface_water_raster = ephemeral_surface_water_raster = raster(paste0(box_data_path, "transition.tif"))
+> 
+> permanent_water_raster[!(permanent_water_raster[] %in% c(1,2))] = NA 
+> permanent_water = rasterToPoints(permanent_water_raster)
+> permanent_water = SpatialPoints(permanent_water[, 1:2], proj4string=CRS('+proj=longlat +datum=WGS84'))
+> 
+> seasonal_surface_water_raster[!(seasonal_surface_water_raster[] %in% c(4, 5, 8, 10))] = NA 
+> seasonal_surface_water = rasterToPoints(seasonal_surface_water_raster)
+> seasonal_surface_water = SpatialPoints(seasonal_surface_water[, 1:2], proj4string=CRS('+proj=longlat +datum=WGS84'))
+> 
+> ephemeral_surface_water_raster[!(ephemeral_surface_water_raster[] %in% c(9, 10))] = NA 
+> ephemeral_surface_water = rasterToPoints(ephemeral_surface_water_raster)
+> ephemeral_surface_water = SpatialPoints(ephemeral_surface_water[, 1:2], proj4string=CRS('+proj=longlat +datum=WGS84'))
+> 
+> 
+> 
+> search_radius = function(surface_water_type, surface_water_raster, ll_sppoints, radius_size) {
++   sppoints = SpatialPoints(ll, proj4string=CRS('+proj=longlat +datum=WGS84'))
++   
++   n_any_surface_water = extract(surface_water_raster, ll_sppoints, buffer = radius_size)
++   
++   n_detected_surface_water = sapply(n_any_surface_water, function(x) sum(!is.na(x)))
++ 
++     prop_detected_surface_water = sapply(n_any_surface_water, function(x) mean(!is.na(x)))
++   
++   detected_sf_tbl = data.frame(n_detected_surface_water = n_detected_surface_water, 
++                                prop_detected_surface_water = prop_detected_surface_water)
++   
++   colnames(detected_sf_tbl) = c(paste0("n_detected_", surface_water_type, "_", radius_size),
++                                 paste0("prop_detected_", surface_water_type, "_", radius_size))
++   return(detected_sf_tbl)
++ }
+> 
+> find_distance_from_water = function(ll_block){
++   ll_block = ll_block %>% dplyr::select(-g)
++   ll_sppoints = SpatialPoints(ll_block, proj4string=CRS('+proj=longlat +datum=WGS84'))
++   
++   distance_from_any_surface_water = distm(x = ll_sppoints, y = any_surface_water, fun = distHaversine) %>% rowMins()
++   detected_any_surface_water = lapply(c(250, 500, 750), 
++                                       function(size) search_radius("any_surface_water", any_surface_water_raster, ll_sppoints, size)) %>% bind_cols()
++   
++   distance_from_permanent_water = distm(x = ll_sppoints, y = permanent_water, fun = distHaversine) %>% rowMins()
++   detected_permanent_water = lapply(c(250, 500, 750), 
++                                     function(size) search_radius("permanent_water", permanent_water_raster, ll_sppoints, size)) %>% bind_cols()
++   
++   distance_from_seasonal_surface_water = distm(x = ll_sppoints, y = seasonal_surface_water, fun = distHaversine) %>% rowMins()
++   detected_seasonal_surface_water = lapply(c(250, 500, 750), 
++                                            function(size) search_radius("seasonal_surface_water", seasonal_surface_water_raster, ll_sppoints, size)) %>% bind_cols()
++   
++   distance_from_ephemeral_surface_water = distm(x = ll_sppoints, y = ephemeral_surface_water, fun = distHaversine) %>% rowMins()
++   detected_ephemeral_surface_water = lapply(c(250, 500, 750), 
++                                             function(size) search_radius("ephemeral_surface_water", ephemeral_surface_water_raster, ll_sppoints, size)) %>% bind_cols()
++   
++   return(ll_block %>% mutate(distance_from_any_surface_water = distance_from_any_surface_water,
++                              distance_from_permanent_water = distance_from_permanent_water,
++                              distance_from_seasonal_surface_water = distance_from_seasonal_surface_water,
++                              distance_from_ephemeral_surface_water = distance_from_ephemeral_surface_water) %>% 
++            bind_cols(detected_any_surface_water, detected_permanent_water, 
++                      detected_seasonal_surface_water, detected_ephemeral_surface_water))
++ }
+> 
+> ll_blocks = ll %>% mutate(g = (1:nrow(ll)) %% 500) %>% 
++   group_by(g) %>% 
++   group_split()
+> 
+> distance_from_water = lapply(ll_blocks, find_distance_from_water) %>% bind_rows()
+> 
+> saveRDS(distance_from_water, paste0(box_data_path, "washb-bangladesh-distance_from_surface_water.RDS"))
+> 
+> #--------------------------------------
+> # Capture session info
+> #--------------------------------------
+> sessionInfo()
+R version 4.2.0 (2022-04-22)
+Platform: x86_64-apple-darwin17.0 (64-bit)
+Running under: macOS Big Sur/Monterey 10.16
+
+Matrix products: default
+BLAS:   /Library/Frameworks/R.framework/Versions/4.2/Resources/lib/libRblas.0.dylib
+LAPACK: /Library/Frameworks/R.framework/Versions/4.2/Resources/lib/libRlapack.dylib
+
+locale:
+[1] en_US.UTF-8/en_US.UTF-8/en_US.UTF-8/C/en_US.UTF-8/en_US.UTF-8
+
+attached base packages:
+[1] parallel  grid      stats     graphics  grDevices datasets  utils    
+[8] methods   base     
+
+other attached packages:
+ [1] matrixStats_1.1.0  pracma_2.4.4       geosphere_1.5-14   raster_3.6-26     
+ [5] sp_1.5-0           cowplot_1.1.1      MetBrewer_0.2.0    RColorBrewer_1.1-3
+ [9] rcartocolor_2.0.0  broom_1.0.5        magrittr_2.0.3     doRNG_1.8.2       
+[13] rngtools_1.5.2     doParallel_1.0.17  iterators_1.0.14   foreach_1.5.2     
+[17] tictoc_1.1         rmarkdown_2.25     kableExtra_1.3.4   forcats_0.5.2     
+[21] readr_2.1.3        tibble_3.2.1       tidyverse_1.3.2    pgirmess_2.0.0    
+[25] wrapr_2.0.9        caret_6.0-93       lattice_0.20-45    viridis_0.6.4     
+[29] viridisLite_0.4.2  purrr_1.0.2        DHARMa_0.4.6       gamm4_0.2-6       
+[33] lme4_1.1-35.1      Matrix_1.6-4       mgcv_1.8-40        nlme_3.1-160      
+[37] assertthat_0.2.1   boxr_0.3.6         ncdf4_1.19         stringr_1.5.1     
+[41] lubridate_1.8.0    washb_0.2.2        gridExtra_2.3      reshape2_1.4.4    
+[45] tidyr_1.3.0        ggcorrplot_0.1.4   ggplot2_3.4.4      dplyr_1.1.4       
+[49] here_1.0.1        
+
+loaded via a namespace (and not attached):
+ [1] readxl_1.4.3         backports_1.4.1      systemfonts_1.0.4   
+ [4] plyr_1.8.9           splines_4.2.0        listenv_0.8.0       
+ [7] digest_0.6.33        htmltools_0.5.7      fansi_1.0.6         
+[10] googlesheets4_1.0.1  tzdb_0.3.0           recipes_1.0.2       
+[13] globals_0.16.1       modelr_0.1.9         gower_1.0.0         
+[16] svglite_2.1.0        hardhat_1.2.0        colorspace_2.1-0    
+[19] rvest_1.0.3          haven_2.5.1          xfun_0.41           
+[22] crayon_1.5.2         jsonlite_1.8.8       survival_3.4-0      
+[25] glue_1.6.2           gtable_0.3.4         gargle_1.2.1        
+[28] ipred_0.9-13         webshot_0.5.4        future.apply_1.9.1  
+[31] scales_1.3.0         DBI_1.1.3            Rcpp_1.0.11         
+[34] spData_2.2.0         units_0.8-0          spdep_1.2-7         
+[37] proxy_0.4-27         stats4_4.2.0         lava_1.6.10         
+[40] prodlim_2019.11.13   httr_1.4.7           wk_0.7.0            
+[43] pkgconfig_2.0.3      nnet_7.3-18          dbplyr_2.2.1        
+[46] deldir_1.0-6         utf8_1.2.4           tidyselect_1.2.0    
+[49] rlang_1.1.2          munsell_0.5.0        cellranger_1.1.0    
+[52] tools_4.2.0          cli_3.6.2            generics_0.1.3      
+[55] evaluate_0.23        fastmap_1.1.1        yaml_2.3.7          
+[58] ModelMetrics_1.2.2.2 knitr_1.45.8         fs_1.6.3            
+[61] s2_1.1.0             future_1.28.0        xml2_1.3.3          
+[64] compiler_4.2.0       rstudioapi_0.14      e1071_1.7-11        
+[67] reprex_2.0.2         stringi_1.8.2        classInt_0.4-8      
+[70] nloptr_2.0.3         vctrs_0.6.5          pillar_1.9.0        
+[73] lifecycle_1.0.4      data.table_1.14.10   R6_2.5.1            
+[76] renv_1.0.5           KernSmooth_2.23-20   parallelly_1.32.1   
+[79] codetools_0.2-18     boot_1.3-28          MASS_7.3-58.1       
+[82] rprojroot_2.0.4      withr_2.5.2          hms_1.1.3           
+[85] terra_1.7-71         rpart_4.1.16         timeDate_4021.106   
+[88] class_7.3-20         minqa_1.2.6          googledrive_2.0.0   
+[91] sf_1.0-12            pROC_1.18.0         
+> 
+> proc.time()
+    user   system  elapsed 
+7291.034 1475.094 8802.333 

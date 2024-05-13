@@ -5,16 +5,6 @@
 # Base functions for analysis
 #######################################
 
-# [TEMPLATE FOR NEW FUNCTIONS]
-# Documentation: 
-# Usage: 
-# Description: 
-# Args/Options: 
-# 
-# Returns: 
-# Output: ...
-# [TEMPLATE FOR NEW FUNCTIONS]
-
 
 ###############################################
 # Make asset-based PCA wealth index

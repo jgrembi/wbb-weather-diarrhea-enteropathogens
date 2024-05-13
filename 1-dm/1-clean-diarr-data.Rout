@@ -1,0 +1,722 @@
+
+R version 4.2.0 (2022-04-22) -- "Vigorous Calisthenics"
+Copyright (C) 2022 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin17.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+- Project '~/Dropbox/08_JadeCollaboration/wbb-weather-diarrhea-enteropathogens' loaded. [renv 1.0.5]
+> #######################################
+> # WASH Benefits Bangladesh  
+> # Hydrometeorological risk factors for diarrhea and enteropathogens
+> 
+> # clean bangladesh main survey baseline, midline, & endline diarrhea data
+> # and EE baseline, midline, & endline diarrhea data
+> #######################################
+> rm(list=ls())
+> 
+> # configure directories, load libraries and base functions
+> source(paste0(here::here(), "/0-config.R"))
+here() starts at /Users/JGrembi/Dropbox/08_JadeCollaboration/wbb-weather-diarrhea-enteropathogens
+
+Attaching package: ‘dplyr’
+
+The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+Loading required package: ggplot2
+
+Attaching package: ‘reshape2’
+
+The following object is masked from ‘package:tidyr’:
+
+    smiths
+
+
+Attaching package: ‘gridExtra’
+
+The following object is masked from ‘package:dplyr’:
+
+    combine
+
+Welcome to the washb package
+Version: 0.2.2
+Created on 2018-11-07
+
+This software was developed with funding from the
+Bill & Melinda Gates Foundation (grant number OPPGD759).
+
+The package's reference manual and vignette are also online:
+https://ben-arnold.github.io/washb
+
+
+Attaching package: ‘lubridate’
+
+The following objects are masked from ‘package:base’:
+
+    date, intersect, setdiff, union
+
+Loading required package: nlme
+
+Attaching package: ‘nlme’
+
+The following object is masked from ‘package:dplyr’:
+
+    collapse
+
+This is mgcv 1.8-40. For overview type 'help("mgcv-package")'.
+Loading required package: Matrix
+
+Attaching package: ‘Matrix’
+
+The following objects are masked from ‘package:tidyr’:
+
+    expand, pack, unpack
+
+Loading required package: lme4
+
+Attaching package: ‘lme4’
+
+The following object is masked from ‘package:nlme’:
+
+    lmList
+
+This is gamm4 0.2-6
+
+This is DHARMa 0.4.6. For overview type '?DHARMa'. For recent changes, type news(package = 'DHARMa')
+Loading required package: viridisLite
+Loading required package: lattice
+
+Attaching package: ‘caret’
+
+The following object is masked from ‘package:purrr’:
+
+    lift
+
+
+Attaching package: ‘wrapr’
+
+The following objects are masked from ‘package:Matrix’:
+
+    pack, unpack
+
+The following object is masked from ‘package:mgcv’:
+
+    %.%
+
+The following objects are masked from ‘package:tidyr’:
+
+    pack, unpack
+
+The following object is masked from ‘package:dplyr’:
+
+    coalesce
+
+── Attaching packages ─────────────────────────────────────── tidyverse 1.3.2 ──
+✔ tibble  3.2.1     ✔ forcats 0.5.2
+✔ readr   2.1.3     
+── Conflicts ────────────────────────────────────────── tidyverse_conflicts() ──
+✖ lubridate::as.difftime() masks base::as.difftime()
+✖ wrapr::coalesce()        masks dplyr::coalesce()
+✖ nlme::collapse()         masks dplyr::collapse()
+✖ gridExtra::combine()     masks dplyr::combine()
+✖ lubridate::date()        masks base::date()
+✖ Matrix::expand()         masks tidyr::expand()
+✖ dplyr::filter()          masks stats::filter()
+✖ tibble::has_name()       masks assertthat::has_name()
+✖ lubridate::intersect()   masks base::intersect()
+✖ dplyr::lag()             masks stats::lag()
+✖ caret::lift()            masks purrr::lift()
+✖ wrapr::pack()            masks Matrix::pack(), tidyr::pack()
+✖ lubridate::setdiff()     masks base::setdiff()
+✖ lubridate::union()       masks base::union()
+✖ wrapr::unpack()          masks Matrix::unpack(), tidyr::unpack()
+✖ tibble::view()           masks wrapr::view()
+
+Attaching package: ‘kableExtra’
+
+The following object is masked from ‘package:dplyr’:
+
+    group_rows
+
+Loading required package: foreach
+
+Attaching package: ‘foreach’
+
+The following objects are masked from ‘package:purrr’:
+
+    accumulate, when
+
+Loading required package: iterators
+Loading required package: parallel
+Loading required package: rngtools
+
+Attaching package: ‘magrittr’
+
+The following object is masked from ‘package:purrr’:
+
+    set_names
+
+The following object is masked from ‘package:tidyr’:
+
+    extract
+
+
+Attaching package: ‘cowplot’
+
+The following object is masked from ‘package:lubridate’:
+
+    stamp
+
+> library(rdrop2)
+> 
+> #--------------------------------------------
+> # set up Dropbox authentication
+> #--------------------------------------------
+> my_dropbox_token <- drop_auth(cache = F)
+Waiting for authentication in browser...
+Press Esc/Ctrl + C to abort
+Please point your browser to the following url: 
+https://www.dropbox.com/oauth2/authorize?client_id=mmhfsybffdom42w&redirect_uri=http%3A%2F%2Flocalhost%3A1410%2F&response_type=code&state=cKju0mdvPI
+Authentication complete.
+> 
+> 
+> #--------------------------------------------
+> # define raw data paths for Box
+> #--------------------------------------------
+> raw_washb_path_box = paste0(local_root_path, local_box_path, "raw-washb/")
+> b_raw_ee_diarrhea_path_box = "wbb-ee-diar-all-timepoints.RDS"
+> b_raw_baseline_path_box =  "washb-bangladesh-enrol.csv"
+> 
+> #--------------------------------------
+> # load and clean raw bangladesh diarrhea data
+> #--------------------------------------
+> ## load main survey diarrhea data 
+> bd_main_diarr <- drop_read_csv("WASHB-Bangladesh-Data/1-primary-outcome-datasets/washb-bangladesh-diar.csv") %>%
++   mutate(svydate = as.Date(svydate, format = "%d%b%Y"), 
++          dob = as.Date(dob, format = "%d%b%Y"), 
++          cohort = "main diarrhea") %>%
++   # Remove all children less than 6 months of age due to issues with accuracy of caregiver diarrhea for this age group
++   filter(agedays > 182)
+> 
+> ## load EE cohort diarrhea data
+> bd_ee_diarr <- readRDS(paste0(raw_washb_path_box, b_raw_ee_diarrhea_path_box)) %>%
++   rename(tchild = tChild) %>%
++   mutate(cohort = "EE diarrhea", 
++          sex = ifelse(sex == 0, "female", ifelse(sex == 1, "male", NA))) %>%
++   # remove the EE baseline measurement because children are on average ~3mo and caregiver diarrhea reporting is not accurate for this age (lots of false positives)
++   filter(svy != 3)
+> 
+> bd_diarr <- bd_main_diarr %>%
++   bind_rows(bd_ee_diarr %>%
++               select(any_of(names(bd_main_diarr)))) %>%
++   rename(aged = agedays, 
++          agey = ageyrs) 
+> 
+> #--------------------------------------
+> # load enrolment/baseline bangladesh data
+> #--------------------------------------
+> bbase = read.csv(paste0(raw_washb_path_box, b_raw_baseline_path_box))
+> 
+> bbase = bbase %>% 
++   rename(date_baseline_svy = svydate)
+> 
+> ## load additional animal variables from raw baseline bangladesh data
+> baseline_animal_data = drop_read_csv("/WASHB-Bangladesh-Data/0-Untouched-data/1-Main-survey/1_Baseline/1. WASHB_Baseline_main_survey.csv") %>%
++   select(dataid, q4114_1h, q4114_2h, q4114_3h, q4114_1com, q4114_2com, q4114_3com) %>%
++   rename(n_cow = q4114_1h, 
++          n_goat = q4114_2h, 
++          n_chkn = q4114_3h, 
++          ncow_c = q4114_1com,
++          ngoat_c = q4114_2com,
++          nchicken_c = q4114_3com) %>%
++   mutate(dataid = as.numeric(dataid))
+> 
+> bbase = bbase %>%
++   left_join(baseline_animal_data %>%
++               select(dataid, n_cow, n_goat, n_chkn), by = "dataid")
+> 
+> 
+> #--------------------------------------
+> # create PCA-based household asset/wealth index
+> # using enrollment data
+> #--------------------------------------
+> # There are 2 important caveats to this calculation:
+> # 1) This index is created on the baseline household survey data so does not capture changes over
+> #     the course of the study or household wealth at the time of diarrhea/pathogen measurement.
+> # 2) We assume that all households within a compound are in the same wealth quartile. Wealth 
+> #     index is calculated at the compound level using data from only 1 household (because that's
+> #     all we collected). For example, older children from another family in the compound that 
+> #     are included are assumed to have the same wealth index of the index child in that compound.
+> asset.vars <- c("roof","walls", "floor", "cement", "elec", "asset_radio", 
++                 "asset_tvbw", "asset_tvcol", "asset_refrig", "asset_bike", 
++                 "asset_moto", "asset_sewmach", "asset_phone", "asset_tv", 
++                 "asset_wardrobe", "asset_table", "asset_chair", "asset_clock", 
++                 "asset_khat", "asset_chouki", "asset_mobile", "n_asset_wardrobe", 
++                 "n_asset_table", "n_asset_chair", "n_asset_clock", "n_asset_khat", 
++                 "n_asset_chouki", "n_asset_mobile", "latown", "landacre", "n_cow", "n_goat", "n_chkn")
+> 
+> wealth.index <- assetPCA(bbase, varlist = asset.vars)
+roof 
+
+FALSE 
+ 5551 
+[1] "integer"
+walls 
+
+FALSE 
+ 5551 
+[1] "integer"
+floor 
+
+FALSE 
+ 5551 
+[1] "integer"
+cement 
+
+FALSE 
+ 5551 
+[1] "integer"
+elec 
+
+FALSE 
+ 5551 
+[1] "integer"
+asset_radio 
+
+FALSE 
+ 5551 
+[1] "integer"
+asset_tvbw 
+
+FALSE 
+ 5551 
+[1] "integer"
+asset_tvcol 
+
+FALSE 
+ 5551 
+[1] "integer"
+asset_refrig 
+
+FALSE 
+ 5551 
+[1] "integer"
+asset_bike 
+
+FALSE 
+ 5551 
+[1] "integer"
+asset_moto 
+
+FALSE 
+ 5551 
+[1] "integer"
+asset_sewmach 
+
+FALSE 
+ 5551 
+[1] "integer"
+asset_phone 
+
+FALSE 
+ 5551 
+[1] "integer"
+asset_tv 
+
+FALSE 
+ 5551 
+[1] "integer"
+asset_wardrobe 
+
+FALSE 
+ 5551 
+[1] "integer"
+asset_table 
+
+FALSE 
+ 5551 
+[1] "integer"
+asset_chair 
+
+FALSE 
+ 5551 
+[1] "integer"
+asset_clock 
+
+FALSE  TRUE 
+ 2692  2859 
+[1] "integer"
+asset_khat 
+
+FALSE 
+ 5551 
+[1] "integer"
+asset_chouki 
+
+FALSE 
+ 5551 
+[1] "integer"
+asset_mobile 
+
+FALSE 
+ 5551 
+[1] "integer"
+n_asset_wardrobe 
+
+FALSE 
+ 5551 
+[1] "integer"
+n_asset_table 
+
+FALSE 
+ 5551 
+[1] "integer"
+n_asset_chair 
+
+FALSE 
+ 5551 
+[1] "integer"
+n_asset_clock 
+
+FALSE  TRUE 
+ 2692  2859 
+[1] "integer"
+n_asset_khat 
+
+FALSE 
+ 5551 
+[1] "integer"
+n_asset_chouki 
+
+FALSE 
+ 5551 
+[1] "integer"
+n_asset_mobile 
+
+FALSE 
+ 5551 
+[1] "integer"
+latown 
+
+FALSE 
+ 5551 
+[1] "integer"
+landacre 
+
+FALSE  TRUE 
+ 5258   293 
+[1] "numeric"
+n_cow 
+
+FALSE 
+ 5551 
+[1] "integer"
+n_goat 
+
+FALSE 
+ 5551 
+[1] "integer"
+n_chkn 
+
+FALSE 
+ 5551 
+[1] "integer"
+         0%         25%         50%         75%        100% 
+-0.96636262 -0.06906928  0.70701862  1.68464191  3.37500780 
+  HHwealth_quart walls1_mean floor1_mean cement1_mean elec1_mean
+1      Wealth Q1   0.6325648 0.003602305  0.003602305  0.2557637
+2      Wealth Q2   0.7664023 0.028839221  0.028839221  0.5371305
+3      Wealth Q3   0.7608069 0.084293948  0.084293948  0.6613833
+4      Wealth Q4   0.7168588 0.303314121  0.303314121  0.8991354
+  asset_tvbw1_mean asset_tvcol1_mean asset_refrig1_mean asset_bike1_mean
+1      0.007204611       0.005043228        0.000000000        0.1073487
+2      0.071377073       0.068493151        0.004325883        0.2754146
+3      0.092939481       0.246397695        0.052593660        0.3580692
+4      0.154899135       0.590778098        0.257925072        0.5021614
+  asset_moto1_mean asset_sewmach1_mean asset_tv1_mean asset_wardrobe1_mean
+1      0.002161383          0.01657061     0.01224784           0.01440922
+2      0.015140591          0.03028118     0.13914924           0.07209805
+3      0.054034582          0.06195965     0.32853026           0.14265130
+4      0.189481268          0.14769452     0.71685879           0.43083573
+  asset_table1_mean asset_chair1_mean asset_clock1_mean asset_clockmiss_mean
+1         0.3933718         0.3335735        0.00000000           0.96613833
+2         0.7238645         0.7325162        0.05046864           0.73828407
+3         0.8292507         0.8695965        0.46902017           0.33645533
+4         0.9538905         0.9747839        0.92579251           0.01945245
+  asset_khat1_mean asset_chouki1_mean asset_mobile1_mean n_asset_wardrobe1_mean
+1        0.1779539          0.8998559          0.6621037             0.01440922
+2        0.5803893          0.7772170          0.8543619             0.06849315
+3        0.7456772          0.7442363          0.9207493             0.11599424
+4        0.9373199          0.7269452          0.9841499             0.29827089
+  n_asset_table1_mean n_asset_table2_mean n_asset_table3_mean
+1           0.3825648          0.01008646        0.0007204611
+2           0.6200433          0.08795963        0.0129776496
+3           0.5871758          0.18587896        0.0410662824
+4           0.3674352          0.34942363        0.1520172911
+  n_asset_chair1_mean n_asset_chair2_mean n_asset_chair3_mean
+1          0.18083573           0.1246398          0.02305476
+2          0.24513338           0.3056957          0.09300649
+3          0.20461095           0.3097983          0.12103746
+4          0.08645533           0.2038905          0.14481268
+  n_asset_chair4_mean n_asset_clock1_mean n_asset_clock2_mean
+1         0.004322767          0.00000000          0.00000000
+2         0.051910598          0.03677001          0.01369863
+3         0.112391931          0.36167147          0.08285303
+4         0.152017291          0.55475504          0.18804035
+  n_asset_clockmiss_mean n_asset_khat1_mean n_asset_khat2_mean
+1             0.96613833          0.1649856         0.01296830
+2             0.73828407          0.4686373         0.08363374
+3             0.33645533          0.4675793         0.19092219
+4             0.01945245          0.3191643         0.32132565
+  n_asset_khat3_mean n_asset_chouki1_mean n_asset_chouki2_mean
+1         0.00000000            0.6109510            0.2536023
+2         0.02451334            0.4448450            0.2451334
+3         0.06268012            0.4063401            0.2291066
+4         0.16930836            0.3162824            0.2759366
+  n_asset_chouki3_mean n_asset_mobile1_mean n_asset_mobile2_mean
+1           0.03242075            0.6123919           0.04682997
+2           0.07209805            0.5594809           0.25018025
+3           0.08789625            0.4308357           0.34870317
+4           0.10590778            0.1570605           0.43587896
+  n_asset_mobile3_mean latown1_mean landacre0.02_mean landacre0.03_mean
+1          0.002161383    0.2485591        0.11239193        0.13040346
+2          0.030281182    0.4823360        0.08795963        0.09805335
+3          0.087175793    0.5987032        0.05475504        0.06195965
+4          0.171469741    0.8148415        0.02089337        0.03386167
+  landacre0.04_mean landacre0.05_mean landacre0.07_mean landacre0.1_mean
+1        0.08141210        0.13688761        0.05763689       0.09221902
+2        0.07714492        0.10165826        0.06416727       0.08723864
+3        0.05403458        0.10230548        0.04899135       0.09221902
+4        0.03314121        0.04394813        0.04827089       0.07564841
+  landacremiss_mean n_cow1_mean n_cow2_mean n_cow3_mean n_goat1_mean
+1        0.07636888   0.2247839   0.1210375  0.04755043   0.09726225
+2        0.04037491   0.2069214   0.1788032  0.07642394   0.09733237
+3        0.04899135   0.1880403   0.1678674  0.09438040   0.11239193
+4        0.04538905   0.1664265   0.1685879  0.12536023   0.11815562
+  n_goat2_mean n_chkn1_mean n_chkn2_mean n_chkn3_mean n_chkn4_mean n_chkn5_mean
+1   0.05691643   0.12680115   0.11455331   0.05619597   0.04755043   0.04034582
+2   0.06056236   0.10310022   0.11391492   0.06344629   0.07281903   0.05335256
+3   0.05331412   0.07132565   0.09005764   0.07204611   0.05475504   0.05331412
+4   0.07708934   0.04755043   0.07420749   0.06123919   0.06556196   0.05475504
+  n_chkn6_mean
+1   0.04034582
+2   0.04902668
+3   0.06556196
+4   0.05115274
+> 
+> ## merge wealth index and baseline data,  remove variables included in wealth index
+> bbase = bbase %>%
++   left_join(wealth.index, by = c("dataid", "union")) %>%
++   select(-(all_of(asset.vars)))
+> 
+> 
+> #--------------------------------------
+> # merge diarrhea data with all covariate data
+> #--------------------------------------
+> ## merge baseline covariate data
+> nrow(bd_diarr)
+[1] 24029
+> bd_diarr = left_join(bd_diarr, bbase, by = c("dataid", "clusterid", "block"))
+> nrow(bd_diarr)
+[1] 24029
+> 
+> 
+> ## merge in compound-level animal counts at time of stool collection
+> midline_animal_data = drop_read_csv("/WASHB-Bangladesh-Data/0-Untouched-data/1-Main-survey/2_Midline/1. WASHB_Midline_main_survey_cleaned.csv") %>% 
++   select(dataid, q4114_1com, q4114_2com, q4114_3com) %>%
++   rename(ncow_c = q4114_1com,
++          ngoat_c = q4114_2com,
++          nchicken_c = q4114_3com) 
+> 
+> endline_animal_data = drop_read_csv("/WASHB-Bangladesh-Data/0-Untouched-data/1-Main-survey/3_Endline/04. WASHB_Endline_main_survey_cleaned.csv") %>% 
++   select(dataid, q4114_1com, q4114_2com, q4114_3com) %>%
++   rename(ncow_c = q4114_1com,
++          ngoat_c = q4114_2com,
++          nchicken_c = q4114_3com) 
+> 
+> 
+> all_animal_data = baseline_animal_data %>% # matches main survey baseline data, svy == 0
++   select(dataid, ncow_c:nchicken_c) %>%
++   mutate(svy = 0) %>% 
++   bind_rows(baseline_animal_data %>% # matches EE baseline data, svy == 3
++               select(dataid, ncow_c:nchicken_c) %>%
++               mutate(svy = 3)) %>%
++   bind_rows(midline_animal_data %>% # matches main survey midline data, svy == 1
++               mutate(svy = 1)) %>%
++   bind_rows(midline_animal_data %>% # matches EE midline data, svy == 4
++               mutate(svy = 4)) %>%
++   bind_rows(endline_animal_data %>% # matches main survey endline data, svy == 2
++               mutate(svy = 2)) %>%
++   bind_rows(endline_animal_data %>% # matches EE endline data, svy == 5
++               mutate(svy = 5)) %>%
++   mutate(cow_cat_c = factor(ifelse(is.na(ncow_c), NA, ifelse(ncow_c == 0, 0, ifelse(ncow_c < 3, 1, 2))), labels = c("0", "1-2", "3+")),
++          goat_cat_c = factor(ifelse(is.na(ngoat_c), NA, ifelse(ngoat_c == 0, 0, ifelse(ngoat_c < 3, 1, 2))), labels = c("0", "1-2", "3+")),
++          chkn_cat_c = factor(ifelse(is.na(nchicken_c), NA, ifelse(nchicken_c == 0, 0, ifelse(nchicken_c < 11, 1, 2))), labels = c("0", "1-10","11+"))) %>%
++   select(dataid, svy, cow_cat_c:chkn_cat_c, ncow_c:nchicken_c)
+> 
+> 
+> bd_diarr = left_join(bd_diarr, all_animal_data, by = c("dataid", "svy"))
+> 
+> 
+> ## get correct assigned study arm from sth dataset
+> bsthmain = read.csv(paste0(raw_washb_path_box, "sth.csv")) %>%
++   select(clusterid, tr) %>%
++   unique() 
+> 
+> bd_diarr = bd_diarr %>%
++   left_join(bsthmain, by = "clusterid") %>%
++   mutate(intervention = as.factor(ifelse(svy == 0 | tr == "Control", 0, 1)),
++          tr = factor(tr))
+> 
+> 
+> #--------------------------------------
+> # create new covariate variables
+> #--------------------------------------
+> ## create month, year, and quarter variables 
+> bd_diarr = bd_diarr %>%
++   mutate(date = as.Date(svydate,"%d%b%Y"),
++          month = month(date),
++          year = year(date),
++          age_cat = as.factor(ifelse(aged <= 1.5*365.25, "<1.5yr", ifelse(aged > 1.5*365.25, "1.5-5yr", NA)))) 
+> 
+> #--------------------------------------
+> # recode sparse covariates 
+> #--------------------------------------
+> bd_diarr = bd_diarr %>%
++   mutate(hfiacat = as.factor(ifelse(hfiacat == "Food Secure", "Food Secure", "Food Insecure")),
++          dadedu = case_when(is.na(dadeduy) ~ NA_character_,
++                             dadeduy == 0 ~ "No education",
++                             dadeduy <= 5 ~ "Primary (1-5y)", 
++                             dadeduy > 5 ~ "Secondary (>5y)"),
++          Nhh_cat = case_when(is.na(Nhh) ~ NA_character_,
++                              Nhh <=3 ~ "2-3",
++                              Nhh == 4 ~ "4",
++                              Nhh <= 6 ~ "5-6",
++                              Nhh > 6 ~ "7+")) %>%
++   mutate(momedu = factor(momedu, levels = c("No education", "Primary (1-5y)", "Secondary (>5y)")),
++          dadedu = factor(dadedu, levels = c("No education", "Primary (1-5y)", "Secondary (>5y)")),
++          Nhh_cat = factor(Nhh_cat, levels = c("2-3", "4", "5-6", "7+")),
++          Nhh_median = factor(ifelse(Nhh > median(.$Nhh, na.rm = T), "above median", "at or below median"), 
++                              levels = c("at or below median", "above median")))
+> 
+> #--------------------------------------
+> # center continuous covariates
+> #--------------------------------------
+> bd_diarr = bd_diarr %>%
++   mutate(across(.cols = c(aged, Nhh, momeduy, dadeduy, nchicken_c, ncow_c, ngoat_c), 
++                 ~ as.numeric(scale(.x, center = T, scale = F)), .names = "{.col}_C"))
+> 
+> 
+> 
+> #--------------------------------------
+> # remove extra covariates and observations where is.na(diar7d)
+> #--------------------------------------
+> bd_diarr = bd_diarr %>%
++   select(-fracode, -(dadagri:hwsws), -dob, -svydate) %>%
++   filter(!is.na(diar7d))
+> 
+> 
+> #--------------------------------------
+> # merge in lat long
+> #--------------------------------------
+> gps = read.csv(paste0(raw_washb_path_box, "gps_27aug2013_corrected_temporary.csv"))
+> 
+> gps = gps %>% dplyr::select(c(dataid, qgpslong, qgpslat, clusterid, block)) 
+> 
+> bdata = left_join(bd_diarr, gps, by = c("dataid", "clusterid", "block")) %>%
++   mutate(clusterid = as.factor(clusterid),
++          dataid = as.factor(dataid))
+> 
+> #--------------------------------------
+> # Save clean data
+> #--------------------------------------
+> saveRDS(bdata, paste0(clean_washb_path_box, clean_bdata_diarr_box))
+> 
+> #--------------------------------------
+> # Capture session info
+> #--------------------------------------
+> sessionInfo()
+R version 4.2.0 (2022-04-22)
+Platform: x86_64-apple-darwin17.0 (64-bit)
+Running under: macOS Big Sur/Monterey 10.16
+
+Matrix products: default
+BLAS:   /Library/Frameworks/R.framework/Versions/4.2/Resources/lib/libRblas.0.dylib
+LAPACK: /Library/Frameworks/R.framework/Versions/4.2/Resources/lib/libRlapack.dylib
+
+locale:
+[1] en_US.UTF-8/en_US.UTF-8/en_US.UTF-8/C/en_US.UTF-8/en_US.UTF-8
+
+attached base packages:
+[1] parallel  grid      stats     graphics  grDevices datasets  utils    
+[8] methods   base     
+
+other attached packages:
+ [1] rdrop2_0.8.2.1     cowplot_1.1.1      MetBrewer_0.2.0    RColorBrewer_1.1-3
+ [5] rcartocolor_2.0.0  broom_1.0.5        magrittr_2.0.3     doRNG_1.8.2       
+ [9] rngtools_1.5.2     doParallel_1.0.17  iterators_1.0.14   foreach_1.5.2     
+[13] tictoc_1.1         rmarkdown_2.25     kableExtra_1.3.4   forcats_0.5.2     
+[17] readr_2.1.3        tibble_3.2.1       tidyverse_1.3.2    pgirmess_2.0.0    
+[21] wrapr_2.0.9        caret_6.0-93       lattice_0.20-45    viridis_0.6.4     
+[25] viridisLite_0.4.2  purrr_1.0.2        DHARMa_0.4.6       gamm4_0.2-6       
+[29] lme4_1.1-35.1      Matrix_1.6-4       mgcv_1.8-40        nlme_3.1-160      
+[33] assertthat_0.2.1   boxr_0.3.6         ncdf4_1.19         stringr_1.5.1     
+[37] lubridate_1.8.0    washb_0.2.2        gridExtra_2.3      reshape2_1.4.4    
+[41] tidyr_1.3.0        ggcorrplot_0.1.4   ggplot2_3.4.4      dplyr_1.1.4       
+[45] here_1.0.1        
+
+loaded via a namespace (and not attached):
+ [1] readxl_1.4.3         backports_1.4.1      systemfonts_1.0.4   
+ [4] plyr_1.8.9           sp_1.5-0             splines_4.2.0       
+ [7] listenv_0.8.0        digest_0.6.33        htmltools_0.5.7     
+[10] fansi_1.0.6          googlesheets4_1.0.1  tzdb_0.3.0          
+[13] recipes_1.0.2        globals_0.16.1       modelr_0.1.9        
+[16] gower_1.0.0          svglite_2.1.0        hardhat_1.2.0       
+[19] colorspace_2.1-0     rvest_1.0.3          haven_2.5.1         
+[22] xfun_0.41            crayon_1.5.2         jsonlite_1.8.8      
+[25] survival_3.4-0       glue_1.6.2           gtable_0.3.4        
+[28] gargle_1.2.1         ipred_0.9-13         webshot_0.5.4       
+[31] future.apply_1.9.1   scales_1.3.0         DBI_1.1.3           
+[34] Rcpp_1.0.11          spData_2.2.0         units_0.8-0         
+[37] spdep_1.2-7          proxy_0.4-27         stats4_4.2.0        
+[40] lava_1.6.10          prodlim_2019.11.13   httr_1.4.7          
+[43] wk_0.7.0             pkgconfig_2.0.3      nnet_7.3-18         
+[46] dbplyr_2.2.1         deldir_1.0-6         utf8_1.2.4          
+[49] later_1.3.2          tidyselect_1.2.0     rlang_1.1.2         
+[52] munsell_0.5.0        cellranger_1.1.0     tools_4.2.0         
+[55] cli_3.6.2            generics_0.1.3       evaluate_0.23       
+[58] fastmap_1.1.1        yaml_2.3.7           ModelMetrics_1.2.2.2
+[61] knitr_1.45.8         fs_1.6.3             s2_1.1.0            
+[64] future_1.28.0        xml2_1.3.3           compiler_4.2.0      
+[67] rstudioapi_0.14      curl_5.2.0           e1071_1.7-11        
+[70] reprex_2.0.2         stringi_1.8.2        classInt_0.4-8      
+[73] nloptr_2.0.3         vctrs_0.6.5          pillar_1.9.0        
+[76] lifecycle_1.0.4      data.table_1.14.10   httpuv_1.6.6        
+[79] R6_2.5.1             promises_1.2.1       renv_1.0.5          
+[82] KernSmooth_2.23-20   parallelly_1.32.1    codetools_0.2-18    
+[85] boot_1.3-28          MASS_7.3-58.1        rprojroot_2.0.4     
+[88] withr_2.5.2          hms_1.1.3            rpart_4.1.16        
+[91] timeDate_4021.106    class_7.3-20         minqa_1.2.6         
+[94] googledrive_2.0.0    sf_1.0-12            pROC_1.18.0         
+> 
+> proc.time()
+   user  system elapsed 
+ 15.696   1.906 231.987 

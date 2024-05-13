@@ -200,7 +200,7 @@ bd_diarr = bd_diarr %>%
 # remove extra covariates and observations where is.na(diar7d)
 #--------------------------------------
 bd_diarr = bd_diarr %>%
-  select(-fracode, -(dadagri:hwsws)) %>%
+  select(-fracode, -(dadagri:hwsws), -dob, -svydate) %>%
   filter(!is.na(diar7d))
 
 

@@ -4,8 +4,8 @@ import os
 import urllib.request
 import xarray as xr
 
-raw_ppt_data_folder = "/Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/data/raw_ppt_data/"
-subset_ppt_data_folder = "/Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/data/subset_ppt_data/"
+raw_ppt_data_folder = "/Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/wbb-weather-diarrhea-pathogens-data/raw_ppt_data/"
+subset_ppt_data_folder = "/Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/wbb-weather-diarrhea-pathogens-data/subset_ppt_data/"
 
 def subset_data(filename): # example filename: 201202.nc
     rawdata = xr.open_dataset(raw_ppt_data_folder + filename)
@@ -21,8 +21,3 @@ filenames = os.listdir(raw_ppt_data_folder)
 for filename in filenames:
     subset_data(filename)
 
-
-#--------------------------------------
-# Capture session info
-#--------------------------------------
-sessionInfo()
