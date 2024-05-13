@@ -9,6 +9,8 @@
 #SBATCH --time=00:00:20
 #SBATCH --partition=relman
 
+## move into the repo directory
+cd /oak/stanford/groups/relman/users/jgrembi/wash/wbb-weather-diarrhea-enteropathogens/2a-fit-models/
 
 #######################################################################
 ## Fit diarrhea models - for diarrhea cohort, control arm only
@@ -79,7 +81,7 @@
 #######################################################################
 ## Make categorical risk factors table of Prevalence Ratios - for all results
 #######################################################################
-cd /oak/stanford/groups/relman/users/jgrembi/wash/wbb-weather-diarrhea-enteropathogens/2a-fit-models
+#cd ../
 ## This makes the table for diarrhea and pathogen results
 sbatch run-sbatch-categorical-rf-tables.sh 
 ## This makes a separate table for age effect modification for diarrhea 
