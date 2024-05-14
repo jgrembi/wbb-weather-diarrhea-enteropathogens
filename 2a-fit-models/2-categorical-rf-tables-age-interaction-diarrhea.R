@@ -16,7 +16,14 @@ source(paste0(here::here(), "/0-config.R"))
 source(paste0(here::here(), "/0-utils/2-categorical-rf-tables-functions.R"))
 
 # Define filepath to model results from age-interaction models
-file_path = paste0(offset_results_path, "gam_outputs/diarrhea-adjusted-interaction-age-0/")
+# file_path = paste0(offset_results_path, "gam_outputs/diarrhea-adjusted-interaction-age-0/")
+# Build paths to files in Sherlock to create data-frame
+if(Sys.getenv("LMOD_SYSHOST")=="sherlock"){
+  # Build path to subfolders in GROUP HOME
+  file_path <- paste0(sherlock_results_dir, "gam_outputs/diarrhea-adjusted-interaction-age-0/")
+} else {
+  file_path <- paste0(offset_results_path, "gam_outputs/diarrhea-adjusted-interaction-age-0/")
+}
 
 risk_factors_categorical = c(
   "heavyrain_1weeklag",
