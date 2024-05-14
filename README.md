@@ -16,16 +16,19 @@ This main folder also contains reproducible workflow documentation for a compani
 Nguyen AT, Grembi JA, Riviere M, et al. (2024) **Influence of Temperature and Precipitation on the Effectiveness of Water, Sanitation, and Handwashing Interventions against Childhood Diarrheal Disease in Rural Bangladesh: A Reanalysis of the WASH Benefits Bangladesh Trial**. _Environmental Health Perspectives_ 132(4):047006.
 [https://doi.org/10.1289/EHP13807](https://doi.org/10.1289/EHP13807) 
 
-### Analysis plan
+### 1. Analysis plan
 The pre-specified analysis plan can be found at [https://osf.io/f9cza](https://osf.io/f9cza).
 
-### Data files
+### 2. Data files
 The data files can be accessed from the Open Sciece Framework at .
 These data files are **modified versions** of the files created by running the scripts in the directory 1-dm/
 
+- The dataset containing diarrhea observations [washb-bangladesh-merged-diarr_public.RDS](https://osf.io/sxuwe)
+- The dataset containing pathogen observations [washb-bangladesh-merged-path_public.RDS](https://osf.io/jw94r)
+
 In the public versions of the datasets, we have reduced the precision of environmental measurements and child age to maintain the privacy of trial participants. Our results may not be fully reproducible with this version of the data. For access to the original data, please contact the corresponding author.
 
-### Supplementary Materials
+### 3. Additional supplementary materials
 According to our analysis plan, we evaluated the influence of several different environmental risk factors on child diarrhea and enteropathogen carriage, not all of which made it into the manuscript.  We provide those results in the directory titled **Supplementary results (not included in manuscript)** which can be found at [https://osf.io/tp7xh/](https://osf.io/tp7xh/). 
  
 ## License
