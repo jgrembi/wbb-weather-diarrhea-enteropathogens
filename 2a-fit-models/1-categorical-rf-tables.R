@@ -12,6 +12,7 @@
 # The intermediate RDS files generated from this script have been uploaded to Box and can be accessed
 # there.
 #######################################
+rm(list=ls())
 source(here::here("0-config.R"))
 source(paste0(here::here(), "/0-utils/2-categorical-rf-tables-functions.R"))
 

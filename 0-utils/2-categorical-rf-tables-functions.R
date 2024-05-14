@@ -157,14 +157,17 @@ make_table_row <- function(outcome_subdir,
   
   colnames(table_row) <-  c("Outcome", "RF", "PR.Lower", "PR.Upper",
                             "PR", "RF_Type", "Group", "Analysis", "N", "risk_factor", "filename", "SE")
-  
+  char_cols = c(1,2,6,7,8,9,10,11)
+  num_cols = c(3,4,5,12)
+  table_row[,char_cols] %<>% lapply(function(x) as.character(x))
+  table_row[,num_cols] %<>% lapply(function(x) as.numeric(x))
   
   #------------------------------------------------------
   # Cycle through unadjusted then adjusted model fit
   #------------------------------------------------------
   for(i in 1:2) {
     
-    if(Sys.getenv("LMOD_SYSHOST")=="sherlock"){
+    #if(Sys.getenv("LMOD_SYSHOST")=="sherlock"){
       # Identify which sub-folder to choose based on outcome & adjusted or unadjusted
       len <- nchar(outcome_subdir)
       
@@ -178,13 +181,13 @@ make_table_row <- function(outcome_subdir,
       subfolder_expr <- paste0(substr(outcome_subdir, 1, last_dash_index), names(dirs_df[i]), hyphen,
                                substr(outcome_subdir, last_dash_index + 1, len))
       
-      subfolder_path = paste0(sherlock_results_dir, "gam_outputs/", subfolder_expr)
+      subfolder_path = paste0(sherlock_folder_path,"/", subfolder_expr)
       file_to_identify = paste0(outcome,"_",risk_factor,".RDS")
       file_path = paste0(subfolder_path, "/", file_to_identify)
       # if (i == 2 && outcome == "gam_bruise7d_0") {
       #     break
       # }
-    }
+   # }
     print(paste0("Filepath: ", file_path))
     x <- readRDS(file_path)
     data = x$model_input_data
