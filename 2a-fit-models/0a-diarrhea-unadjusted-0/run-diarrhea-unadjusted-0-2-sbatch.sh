@@ -28,6 +28,6 @@ ml system
 
 ml pandoc/2.7.3
 
-cd /oak/stanford/groups/relman/users/jgrembi/wash/WBB-weather-diarrhea-pathogens/2-analysis/0a-diarrhea-unadjusted-0/
+cd /oak/stanford/groups/relman/users/jgrembi/wash/wbb-weather-diarrhea-enteropathogens/2a-fit-models/0a-diarrhea-unadjusted-0/
 
 R CMD BATCH --no-save diarrhea-unadjusted-0-2.R 

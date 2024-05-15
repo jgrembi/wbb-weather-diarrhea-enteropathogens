@@ -27,6 +27,6 @@ ml system
 
 ml pandoc/2.7.3
 
-cd /oak/stanford/groups/relman/users/jgrembi/wash/WBB-weather-diarrhea-pathogens/2-analysis/0d-diarrhea-adjusted-interaction-age-0/
+cd /oak/stanford/groups/relman/users/jgrembi/wash/wbb-weather-diarrhea-enteropathogens/2a-fit-models/0e-diarrhea-adjusted-interaction-age-0/
 
 R CMD BATCH --no-save diarrhea-interaction-age-adj-0-1.R 

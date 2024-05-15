@@ -27,6 +27,6 @@ ml system
 
 ml pandoc/2.7.3
 
-cd /oak/stanford/groups/relman/users/jgrembi/wash/WBB-weather-diarrhea-pathogens/2-analysis/0f-diarrhea-adjusted-nointeraction-ppt-temp-0/
+cd /oak/stanford/groups/relman/users/jgrembi/wash/wbb-weather-diarrhea-enteropathogens/2a-fit-models/0g-diarrhea-adjusted-nointeraction-ppt-temp-0/
 
 R CMD BATCH --no-save diarrhea-nointeraction-ppt-temp-adj-0-1.R 
