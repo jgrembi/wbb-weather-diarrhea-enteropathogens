@@ -52,7 +52,7 @@ round(quantile(surface_water_distances$distance_from_any_surface_water,
 
 
 # read in analysis (gamm) results --------------------------------------------------
-prev_table = readRDS(paste0(tab_dir, "corrected_PR_tables.RDS")) %>%
+prev_table = readRDS(paste0(data_dir, "corrected_PR_tables_nointeraction.RDS")) %>%
   filter(risk_factor %in% risk_factors)
 
 #------------------------------------------------------

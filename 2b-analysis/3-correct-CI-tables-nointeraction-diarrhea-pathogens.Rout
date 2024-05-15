@@ -1,0 +1,472 @@
+
+R version 4.2.0 (2022-04-22) -- "Vigorous Calisthenics"
+Copyright (C) 2022 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin17.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> #######################################
+> # WASH Benefits Bangladesh  
+> # Hydrometeorological risk factors for diarrhea and enteropathogens
+> 
+> # for models that did not converge properly
+> # due to sparsity, rerunning with glm 
+> # (all use binary risk factors)
+> #######################################
+> rm(list=ls())
+> 
+> # configure directories, load libraries and base functions
+> source(paste0(here::here(), "/0-config.R"))
+here() starts at /Users/JGrembi/Dropbox/08_JadeCollaboration/wbb-weather-diarrhea-enteropathogens
+
+Attaching package: ‘dplyr’
+
+The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+Loading required package: ggplot2
+
+Attaching package: ‘reshape2’
+
+The following object is masked from ‘package:tidyr’:
+
+    smiths
+
+
+Attaching package: ‘gridExtra’
+
+The following object is masked from ‘package:dplyr’:
+
+    combine
+
+Welcome to the washb package
+Version: 0.2.2
+Created on 2018-11-07
+
+This software was developed with funding from the
+Bill & Melinda Gates Foundation (grant number OPPGD759).
+
+The package's reference manual and vignette are also online:
+https://ben-arnold.github.io/washb
+
+
+Attaching package: ‘lubridate’
+
+The following objects are masked from ‘package:base’:
+
+    date, intersect, setdiff, union
+
+Loading required package: nlme
+
+Attaching package: ‘nlme’
+
+The following object is masked from ‘package:dplyr’:
+
+    collapse
+
+This is mgcv 1.8-40. For overview type 'help("mgcv-package")'.
+Loading required package: Matrix
+
+Attaching package: ‘Matrix’
+
+The following objects are masked from ‘package:tidyr’:
+
+    expand, pack, unpack
+
+Loading required package: lme4
+
+Attaching package: ‘lme4’
+
+The following object is masked from ‘package:nlme’:
+
+    lmList
+
+This is gamm4 0.2-6
+
+This is DHARMa 0.4.6. For overview type '?DHARMa'. For recent changes, type news(package = 'DHARMa')
+Loading required package: viridisLite
+Loading required package: lattice
+
+Attaching package: ‘caret’
+
+The following object is masked from ‘package:purrr’:
+
+    lift
+
+
+Attaching package: ‘wrapr’
+
+The following objects are masked from ‘package:Matrix’:
+
+    pack, unpack
+
+The following object is masked from ‘package:mgcv’:
+
+    %.%
+
+The following objects are masked from ‘package:tidyr’:
+
+    pack, unpack
+
+The following object is masked from ‘package:dplyr’:
+
+    coalesce
+
+── Attaching packages ─────────────────────────────────────── tidyverse 1.3.2 ──
+✔ tibble  3.2.1     ✔ forcats 0.5.2
+✔ readr   2.1.3     
+── Conflicts ────────────────────────────────────────── tidyverse_conflicts() ──
+✖ lubridate::as.difftime() masks base::as.difftime()
+✖ wrapr::coalesce()        masks dplyr::coalesce()
+✖ nlme::collapse()         masks dplyr::collapse()
+✖ gridExtra::combine()     masks dplyr::combine()
+✖ lubridate::date()        masks base::date()
+✖ Matrix::expand()         masks tidyr::expand()
+✖ dplyr::filter()          masks stats::filter()
+✖ tibble::has_name()       masks assertthat::has_name()
+✖ lubridate::intersect()   masks base::intersect()
+✖ dplyr::lag()             masks stats::lag()
+✖ caret::lift()            masks purrr::lift()
+✖ wrapr::pack()            masks Matrix::pack(), tidyr::pack()
+✖ lubridate::setdiff()     masks base::setdiff()
+✖ lubridate::union()       masks base::union()
+✖ wrapr::unpack()          masks Matrix::unpack(), tidyr::unpack()
+✖ tibble::view()           masks wrapr::view()
+
+Attaching package: ‘kableExtra’
+
+The following object is masked from ‘package:dplyr’:
+
+    group_rows
+
+Loading required package: foreach
+
+Attaching package: ‘foreach’
+
+The following objects are masked from ‘package:purrr’:
+
+    accumulate, when
+
+Loading required package: iterators
+Loading required package: parallel
+Loading required package: rngtools
+
+Attaching package: ‘magrittr’
+
+The following object is masked from ‘package:purrr’:
+
+    set_names
+
+The following object is masked from ‘package:tidyr’:
+
+    extract
+
+
+Attaching package: ‘cowplot’
+
+The following object is masked from ‘package:lubridate’:
+
+    stamp
+
+> source(paste0(here::here(), "/0-utils/2-categorical-rf-tables-functions.R"))
+> 
+> 
+> ## Get list of models that did not converge properly
+> 
+> prev_table <- readRDS(paste0(data_dir, "intermediate_RDS_files/old_PR_tables_nointeraction.RDS"))
+> 
+> failed <- prev_table %>%
++   filter(SE < 0.02)
+> 
+> # load results objects --------------------------------------------------------
+> # the analysis will use the same dataset that was already processed for analysis for 
+> # each risk factor/outcome (e.g. covariates already pre-screened, missing observations removed, etc.)
+> # Diarrhea - unadjusted models
+> diar_prop_seas_sf_750 = readRDS(paste0(offset_results_path,"gam_outputs/diarrhea-unadjusted-0/gam_diar7d_0_prop_detected_seasonal_surface_water_750_median.RDS"))
+> diar_prop_eph_sf_750 = readRDS(paste0(offset_results_path,"gam_outputs/diarrhea-unadjusted-0/gam_diar7d_0_prop_detected_ephemeral_surface_water_750_median.RDS"))
+> diar_prop_any_sf_750 = readRDS(paste0(offset_results_path,"gam_outputs/diarrhea-unadjusted-0/gam_diar7d_0_prop_detected_any_surface_water_750_median.RDS"))
+> diar_prop_any_sf_500 = readRDS(paste0(offset_results_path,"gam_outputs/diarrhea-unadjusted-0/gam_diar7d_0_prop_detected_any_surface_water_500_median.RDS"))
+> 
+> diar_temp_weekmax_1weeklag = readRDS(paste0(offset_results_path, "gam_outputs/diarrhea-unadjusted-0/gam_diar7d_0_temp_weekmax_1weeklag_median.RDS"))
+> diar_temp_weekmax_2weeklag = readRDS(paste0(offset_results_path, "gam_outputs/diarrhea-unadjusted-0/gam_diar7d_0_temp_weekmax_2weeklag_median.RDS"))
+> diar_temp_weekmax_3weeklag = readRDS(paste0(offset_results_path, "gam_outputs/diarrhea-unadjusted-0/gam_diar7d_0_temp_weekmax_3weeklag_median.RDS"))
+> 
+> diar_temp_weekavg_1weeklag = readRDS(paste0(offset_results_path, "gam_outputs/diarrhea-unadjusted-0/gam_diar7d_0_temp_weekavg_1weeklag_median.RDS"))
+> diar_temp_weekmin_1weeklag = readRDS(paste0(offset_results_path, "gam_outputs/diarrhea-unadjusted-0/gam_diar7d_0_temp_weekmin_1weeklag_median.RDS"))
+> diar_temp_weekmin_2weeklag = readRDS(paste0(offset_results_path, "gam_outputs/diarrhea-unadjusted-0/gam_diar7d_0_temp_weekmin_2weeklag_median.RDS"))
+> 
+> 
+> ######################################################################
+> ## Diarrhea - unadjusted
+> ######################################################################
+> #diar_prop_seas_sf_750 
+> glm_diar_prop_seas_sf_750 = fit_clustered_glm(
++   y = diar_prop_seas_sf_750$y,
++   a = diar_prop_seas_sf_750$a,
++   data = diar_prop_seas_sf_750$model_input_data,
++   family = diar_prop_seas_sf_750$gam_fit$gam$family,
++   idvar = "dataid"
++ )
+
+Attaching package: ‘zoo’
+
+The following objects are masked from ‘package:base’:
+
+    as.Date, as.Date.numeric
+
+  Outcome                                         RF_Type
+1  diar7d prop_detected_seasonal_surface_water_750_median
+                                               RF estimate_se        SE
+1 prop_detected_seasonal_surface_water_750_median -0.2 (0.09) 0.0939072
+         PR  PR_lower  PR_upper  Group      Model
+1 0.8159964 0.6788194 0.9808942 Unadj. Unadjusted
+> 
+> #diar_prop_eph_sf_750 
+> glm_diar_prop_eph_sf_750 = fit_clustered_glm(
++   y = diar_prop_eph_sf_750$y,
++   a = diar_prop_eph_sf_750$a,
++   data = diar_prop_eph_sf_750$model_input_data,
++   family = diar_prop_eph_sf_750$gam_fit$gam$family,
++   idvar = "dataid"
++ )
+  Outcome                                          RF_Type
+1  diar7d prop_detected_ephemeral_surface_water_750_median
+                                                RF  estimate_se         SE
+1 prop_detected_ephemeral_surface_water_750_median -0.13 (0.09) 0.09405658
+        PR  PR_lower PR_upper  Group      Model
+1 0.877272 0.7295804 1.054861 Unadj. Unadjusted
+> 
+> #diar_prop_any_sf_750 
+> glm_diar_prop_any_sf_750 = fit_clustered_glm(
++   y = diar_prop_any_sf_750$y,
++   a = diar_prop_any_sf_750$a,
++   data = diar_prop_any_sf_750$model_input_data,
++   family = diar_prop_any_sf_750$gam_fit$gam$family,
++   idvar = "dataid"
++ )
+  Outcome                                    RF_Type
+1  diar7d prop_detected_any_surface_water_750_median
+                                          RF  estimate_se         SE        PR
+1 prop_detected_any_surface_water_750_median -0.23 (0.09) 0.09391759 0.7939458
+   PR_lower  PR_upper  Group      Model
+1 0.6604623 0.9544071 Unadj. Unadjusted
+> 
+> # diar_prop_any_sf_500 
+> glm_diar_prop_any_sf_500 = fit_clustered_glm(
++   y = diar_prop_any_sf_500$y,
++   a = diar_prop_any_sf_500$a,
++   data = diar_prop_any_sf_500$model_input_data,
++   family = diar_prop_any_sf_500$gam_fit$gam$family,
++   idvar = "dataid"
++ )
+  Outcome                                    RF_Type
+1  diar7d prop_detected_any_surface_water_500_median
+                                          RF  estimate_se         SE        PR
+1 prop_detected_any_surface_water_500_median -0.24 (0.09) 0.09403812 0.7843792
+  PR_lower  PR_upper  Group      Model
+1  0.65235 0.9431298 Unadj. Unadjusted
+> 
+> #diar_temp_weekmax_1wk
+> glm_diar_temp_weekmax_1wk = fit_clustered_glm(
++   y = diar_temp_weekmax_1weeklag$y,
++   a = diar_temp_weekmax_1weeklag$a,
++   data = diar_temp_weekmax_1weeklag$model_input_data,
++   family = diar_temp_weekmax_1weeklag$gam_fit$gam$family,
++   idvar = "dataid"
++ )
+  Outcome                      RF_Type                           RF estimate_se
+1  diar7d temp_weekmax_1weeklag_median temp_weekmax_1weeklag_median  0.34 (0.1)
+          SE       PR PR_lower PR_upper  Group      Model
+1 0.09794432 1.410148 1.163843 1.708579 Unadj. Unadjusted
+> 
+> #diar_temp_weekmax_2wk
+> glm_diar_temp_weekmax_2wk = fit_clustered_glm(
++   y = diar_temp_weekmax_2weeklag$y,
++   a = diar_temp_weekmax_2weeklag$a,
++   data = diar_temp_weekmax_2weeklag$model_input_data,
++   family = diar_temp_weekmax_2weeklag$gam_fit$gam$family,
++   idvar = "dataid"
++ )
+  Outcome                      RF_Type                           RF estimate_se
+1  diar7d temp_weekmax_2weeklag_median temp_weekmax_2weeklag_median  0.42 (0.1)
+          SE       PR PR_lower PR_upper  Group      Model
+1 0.09732742 1.515789 1.252546 1.834358 Unadj. Unadjusted
+> 
+> #diar_temp_weekmax_3wk
+> glm_diar_temp_weekmax_3wk = fit_clustered_glm(
++   y = diar_temp_weekmax_3weeklag$y,
++   a = diar_temp_weekmax_3weeklag$a,
++   data = diar_temp_weekmax_3weeklag$model_input_data,
++   family = diar_temp_weekmax_3weeklag$gam_fit$gam$family,
++   idvar = "dataid"
++ )
+  Outcome                      RF_Type                           RF estimate_se
+1  diar7d temp_weekmax_3weeklag_median temp_weekmax_3weeklag_median 0.41 (0.09)
+          SE       PR PR_lower PR_upper  Group      Model
+1 0.09467214 1.511672 1.255661 1.819879 Unadj. Unadjusted
+> 
+> #diar_temp_weekavg_1wk
+> glm_diar_temp_weekavg_1wk = fit_clustered_glm(
++   y = diar_temp_weekavg_1weeklag$y,
++   a = diar_temp_weekavg_1weeklag$a,
++   data = diar_temp_weekavg_1weeklag$model_input_data,
++   family = diar_temp_weekavg_1weeklag$gam_fit$gam$family,
++   idvar = "dataid"
++ )
+  Outcome                      RF_Type                           RF estimate_se
+1  diar7d temp_weekavg_1weeklag_median temp_weekavg_1weeklag_median  0.33 (0.1)
+          SE       PR PR_lower PR_upper  Group      Model
+1 0.09829915 1.396359 1.151661 1.693048 Unadj. Unadjusted
+> 
+> #diar_temp_weekmin_1wk
+> glm_diar_temp_weekmin_1wk = fit_clustered_glm(
++   y = diar_temp_weekmin_1weeklag$y,
++   a = diar_temp_weekmin_1weeklag$a,
++   data = diar_temp_weekmin_1weeklag$model_input_data,
++   family = diar_temp_weekmin_1weeklag$gam_fit$gam$family,
++   idvar = "dataid"
++ )
+  Outcome                      RF_Type                           RF estimate_se
+1  diar7d temp_weekmin_1weeklag_median temp_weekmin_1weeklag_median 0.28 (0.09)
+          SE       PR PR_lower PR_upper  Group      Model
+1 0.09457592 1.322205 1.098488 1.591482 Unadj. Unadjusted
+> 
+> #diar_temp_weekmin_2wk
+> glm_diar_temp_weekmin_2wk = fit_clustered_glm(
++   y = diar_temp_weekmin_2weeklag$y,
++   a = diar_temp_weekmin_2weeklag$a,
++   data = diar_temp_weekmin_2weeklag$model_input_data,
++   family = diar_temp_weekmin_2weeklag$gam_fit$gam$family,
++   idvar = "dataid"
++ )
+  Outcome                      RF_Type                           RF estimate_se
+1  diar7d temp_weekmin_2weeklag_median temp_weekmin_2weeklag_median 0.23 (0.09)
+          SE       PR PR_lower PR_upper  Group      Model
+1 0.09317452 1.257158 1.047321 1.509038 Unadj. Unadjusted
+> 
+> 
+> # combine results ---------------------------------------
+> corrected_data <- bind_rows(glm_diar_prop_seas_sf_750,
++                             glm_diar_prop_eph_sf_750,
++                             glm_diar_prop_any_sf_750,
++                             glm_diar_prop_any_sf_500,
++                             glm_diar_temp_weekmax_1wk,
++                             glm_diar_temp_weekmax_2wk,
++                             glm_diar_temp_weekmax_3wk,
++                             glm_diar_temp_weekavg_1wk,
++                             glm_diar_temp_weekmin_1wk,
++                             glm_diar_temp_weekmin_2wk) %>%
++   rename(outcome_name = Outcome, risk_factor = RF) %>%
++   mutate(RF_Type = case_when(
++     # grepl("heavyrain", risk_factor) ~ "heavy rain",
++     grepl("prop_detected", risk_factor) ~ "higher than median proportion",
++     # grepl("ppt_week_sum", risk_factor) ~ "above median",
++     grepl("temp_week", risk_factor) ~ "above median",
++     RF_Type == "close" ~ "Close vs. Far",
++     RF_Type == "medium" ~ "Medium vs. Far",
++     TRUE ~ RF_Type
++   )) %>%
++   select(-estimate_se) %>%
++   rename(PR.Lower = PR_lower,
++          PR.Upper = PR_upper)
+> 
+> output = failed %>%
++   select(-(`PR.Lower`:PR), -SE) %>%
++   left_join(corrected_data %>%
++               select(-Model))
+Joining with `by = join_by(RF_Type, Group, risk_factor, outcome_name)`
+> 
+> saveRDS(output, paste0(data_dir, "intermediate_RDS_files/corrected_models_nointeraction.RDS"))
+> 
+> 
+> updated_table = prev_table %>%
++   filter(SE > 0.02) %>%
++  bind_rows(output)
+> 
+> saveRDS(updated_table, paste0(data_dir, "corrected_PR_tables_nointeraction.RDS"))
+> 
+> #--------------------------------------
+> # Capture session info
+> #--------------------------------------
+> sessionInfo()
+R version 4.2.0 (2022-04-22)
+Platform: x86_64-apple-darwin17.0 (64-bit)
+Running under: macOS Big Sur/Monterey 10.16
+
+Matrix products: default
+BLAS:   /Library/Frameworks/R.framework/Versions/4.2/Resources/lib/libRblas.0.dylib
+LAPACK: /Library/Frameworks/R.framework/Versions/4.2/Resources/lib/libRlapack.dylib
+
+locale:
+[1] en_US.UTF-8/en_US.UTF-8/en_US.UTF-8/C/en_US.UTF-8/en_US.UTF-8
+
+attached base packages:
+[1] parallel  grid      stats     graphics  grDevices utils     datasets 
+[8] methods   base     
+
+other attached packages:
+ [1] lmtest_0.9-40      zoo_1.8-11         sandwich_3.0-2     cowplot_1.1.1     
+ [5] MetBrewer_0.2.0    RColorBrewer_1.1-3 rcartocolor_2.0.0  broom_1.0.5       
+ [9] magrittr_2.0.3     doRNG_1.8.2        rngtools_1.5.2     doParallel_1.0.17 
+[13] iterators_1.0.14   foreach_1.5.2      tictoc_1.1         rmarkdown_2.25    
+[17] kableExtra_1.3.4   forcats_0.5.2      readr_2.1.3        tibble_3.2.1      
+[21] tidyverse_1.3.2    pgirmess_2.0.0     wrapr_2.0.9        caret_6.0-93      
+[25] lattice_0.20-45    viridis_0.6.4      viridisLite_0.4.2  purrr_1.0.2       
+[29] DHARMa_0.4.6       gamm4_0.2-6        lme4_1.1-35.1      Matrix_1.6-4      
+[33] mgcv_1.8-40        nlme_3.1-160       assertthat_0.2.1   boxr_0.3.6        
+[37] ncdf4_1.19         stringr_1.5.1      lubridate_1.8.0    washb_0.2.2       
+[41] gridExtra_2.3      reshape2_1.4.4     tidyr_1.3.0        ggcorrplot_0.1.4  
+[45] ggplot2_3.4.4      dplyr_1.1.4        here_1.0.1        
+
+loaded via a namespace (and not attached):
+ [1] readxl_1.4.3         backports_1.4.1      systemfonts_1.0.4   
+ [4] plyr_1.8.9           sp_1.5-0             splines_4.2.0       
+ [7] listenv_0.8.0        digest_0.6.33        htmltools_0.5.7     
+[10] fansi_1.0.6          googlesheets4_1.0.1  tzdb_0.3.0          
+[13] recipes_1.0.2        globals_0.16.1       modelr_0.1.9        
+[16] gower_1.0.0          svglite_2.1.0        hardhat_1.2.0       
+[19] colorspace_2.1-0     rvest_1.0.3          haven_2.5.1         
+[22] xfun_0.41            crayon_1.5.2         jsonlite_1.8.8      
+[25] survival_3.4-0       glue_1.6.2           gtable_0.3.4        
+[28] gargle_1.2.1         ipred_0.9-13         webshot_0.5.4       
+[31] future.apply_1.9.1   scales_1.3.0         DBI_1.1.3           
+[34] Rcpp_1.0.11          spData_2.2.0         units_0.8-0         
+[37] spdep_1.2-7          proxy_0.4-27         stats4_4.2.0        
+[40] lava_1.6.10          prodlim_2019.11.13   httr_1.4.7          
+[43] wk_0.7.0             pkgconfig_2.0.3      nnet_7.3-18         
+[46] dbplyr_2.2.1         deldir_1.0-6         utf8_1.2.4          
+[49] tidyselect_1.2.0     rlang_1.1.2          munsell_0.5.0       
+[52] cellranger_1.1.0     tools_4.2.0          cli_3.6.2           
+[55] generics_0.1.3       evaluate_0.23        fastmap_1.1.1       
+[58] ModelMetrics_1.2.2.2 knitr_1.45.8         fs_1.6.3            
+[61] s2_1.1.0             future_1.28.0        xml2_1.3.3          
+[64] compiler_4.2.0       rstudioapi_0.14      e1071_1.7-11        
+[67] reprex_2.0.2         stringi_1.8.2        classInt_0.4-8      
+[70] nloptr_2.0.3         vctrs_0.6.5          pillar_1.9.0        
+[73] lifecycle_1.0.4      data.table_1.14.10   R6_2.5.1            
+[76] KernSmooth_2.23-20   parallelly_1.32.1    codetools_0.2-18    
+[79] boot_1.3-28          MASS_7.3-58.1        rprojroot_2.0.4     
+[82] withr_2.5.2          hms_1.1.3            rpart_4.1.16        
+[85] timeDate_4021.106    class_7.3-20         minqa_1.2.6         
+[88] googledrive_2.0.0    sf_1.0-12            pROC_1.18.0         
+> 
+> proc.time()
+   user  system elapsed 
+ 10.808   0.944  12.090 

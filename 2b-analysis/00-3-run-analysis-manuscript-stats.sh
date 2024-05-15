@@ -33,18 +33,34 @@ then
   ml pandoc/2.7.3
   
   ml physics gdal/3.5.2 udunits proj/9.1.0 geos/3.11.0 cmake fribidi python sqlite/3.44.2 netcdf/4.8.1 readline/7.0
-  #######################################################################
-  ## Run manuscript stats
-  # These are files whose interactive output (on the command line of R/RStudio)
-  # provide the statistics reported in the results text of the manuscript
-  #######################################################################
+ 
   cd /oak/stanford/groups/relman/users/jgrembi/wash/wbb-weather-diarrhea-enteropathogens/2b-analysis/
 else
   cd /Users/JGrembi/Dropbox/08_JadeCollaboration/wbb-weather-diarrhea-enteropathogens/2b-analysis/
 fi
 
-R CMD BATCH --no-save 1-manuscript-stats-diarrhea-prev.R 1-manuscript-stats-diarrhea-prev.Rout
-R CMD BATCH --no-save 2-manuscript-stats-temperature.R 2-manuscript-stats-temperature.Rout
-R CMD BATCH --no-save 3-manuscript-stats-precipitation.R 3-manuscript-stats-precipitation.Rout
-R CMD BATCH --no-save 4-manuscript-stats-surface-water.R 4-manuscript-stats-surface-water.Rout
-R CMD BATCH --no-save 5-manuscript-stats-humidity-vpd.R 5-manuscript-stats-humidity-vpd.Rout
+#######################################################################
+## Make categorical risk factors table of Prevalence Ratios - for all results
+#######################################################################
+# # This makes the table for diarrhea and pathogen results
+# R CMD BATCH --no-save 1-categorical-rf-tables.R 1-categorical-rf-tables.Rout
+# 
+# ## This makes a separate table for age effect modification for diarrhea
+# ## (not run for pathogens because of the narrow age range)
+# R CMD BATCH --no-save 2-categorical-rf-tables-age-interaction-diarrhea.R 2-categorical-rf-tables-age-interaction-diarrhea.Rout
+# 
+# ## This cleans up a few results that had unrealistically small standard errors,
+# ## which was caused by data sparsity in the gps coordinates when including the spatial term.
+# R CMD BATCH --no-save 3-correct-CI-tables-nointeraction-diarrhea-pathogens.R 3-correct-CI-tables-nointeraction-diarrhea-pathogens.Routsbatch run-sbatch-categorical-rf-tables.sh
+# 
+# 
+# #######################################################################
+# ## Run manuscript stats
+# # These are files whose interactive output (on the command line of R/RStudio)
+# # provide the statistics reported in the results text of the manuscript
+# #######################################################################
+# R CMD BATCH --no-save 4-manuscript-stats-diarrhea-prev.R 4-manuscript-stats-diarrhea-prev.Rout
+# R CMD BATCH --no-save 5-manuscript-stats-temperature.R 5-manuscript-stats-temperature.Rout
+R CMD BATCH --no-save 6-manuscript-stats-precipitation.R 6-manuscript-stats-precipitation.Rout
+R CMD BATCH --no-save 7-manuscript-stats-surface-water.R 7-manuscript-stats-surface-water.Rout
+R CMD BATCH --no-save 8-manuscript-stats-humidity-vpd.R 8-manuscript-stats-humidity-vpd.Rout
