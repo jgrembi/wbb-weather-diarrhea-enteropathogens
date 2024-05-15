@@ -1,0 +1,1424 @@
+
+R version 4.2.0 (2022-04-22) -- "Vigorous Calisthenics"
+Copyright (C) 2022 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin17.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> #######################################
+> # WASH Benefits Bangladesh  
+> # Hydrometeorological risk factors for diarrhea and enteropathogens
+> 
+> # Script to plot temperature continuous risk factors 
+> # Diarrhea, control arm and pathogen outcomes 
+> 
+> # Adjusted models
+> #######################################
+> 
+> rm(list=ls())
+> source(paste0(here::here(), "/0-config.R"))
+here() starts at /Users/JGrembi/Dropbox/08_JadeCollaboration/wbb-weather-diarrhea-enteropathogens
+
+Attaching package: ‘dplyr’
+
+The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+Loading required package: ggplot2
+
+Attaching package: ‘reshape2’
+
+The following object is masked from ‘package:tidyr’:
+
+    smiths
+
+
+Attaching package: ‘gridExtra’
+
+The following object is masked from ‘package:dplyr’:
+
+    combine
+
+Welcome to the washb package
+Version: 0.2.2
+Created on 2018-11-07
+
+This software was developed with funding from the
+Bill & Melinda Gates Foundation (grant number OPPGD759).
+
+The package's reference manual and vignette are also online:
+https://ben-arnold.github.io/washb
+
+
+Attaching package: ‘lubridate’
+
+The following objects are masked from ‘package:base’:
+
+    date, intersect, setdiff, union
+
+Loading required package: nlme
+
+Attaching package: ‘nlme’
+
+The following object is masked from ‘package:dplyr’:
+
+    collapse
+
+This is mgcv 1.8-40. For overview type 'help("mgcv-package")'.
+Loading required package: Matrix
+
+Attaching package: ‘Matrix’
+
+The following objects are masked from ‘package:tidyr’:
+
+    expand, pack, unpack
+
+Loading required package: lme4
+
+Attaching package: ‘lme4’
+
+The following object is masked from ‘package:nlme’:
+
+    lmList
+
+This is gamm4 0.2-6
+
+This is DHARMa 0.4.6. For overview type '?DHARMa'. For recent changes, type news(package = 'DHARMa')
+Loading required package: viridisLite
+Loading required package: lattice
+
+Attaching package: ‘caret’
+
+The following object is masked from ‘package:purrr’:
+
+    lift
+
+
+Attaching package: ‘wrapr’
+
+The following objects are masked from ‘package:Matrix’:
+
+    pack, unpack
+
+The following object is masked from ‘package:mgcv’:
+
+    %.%
+
+The following objects are masked from ‘package:tidyr’:
+
+    pack, unpack
+
+The following object is masked from ‘package:dplyr’:
+
+    coalesce
+
+── Attaching packages ─────────────────────────────────────── tidyverse 1.3.2 ──
+✔ tibble  3.2.1     ✔ forcats 0.5.2
+✔ readr   2.1.3     
+── Conflicts ────────────────────────────────────────── tidyverse_conflicts() ──
+✖ lubridate::as.difftime() masks base::as.difftime()
+✖ wrapr::coalesce()        masks dplyr::coalesce()
+✖ nlme::collapse()         masks dplyr::collapse()
+✖ gridExtra::combine()     masks dplyr::combine()
+✖ lubridate::date()        masks base::date()
+✖ Matrix::expand()         masks tidyr::expand()
+✖ dplyr::filter()          masks stats::filter()
+✖ tibble::has_name()       masks assertthat::has_name()
+✖ lubridate::intersect()   masks base::intersect()
+✖ dplyr::lag()             masks stats::lag()
+✖ caret::lift()            masks purrr::lift()
+✖ wrapr::pack()            masks Matrix::pack(), tidyr::pack()
+✖ lubridate::setdiff()     masks base::setdiff()
+✖ lubridate::union()       masks base::union()
+✖ wrapr::unpack()          masks Matrix::unpack(), tidyr::unpack()
+✖ tibble::view()           masks wrapr::view()
+
+Attaching package: ‘kableExtra’
+
+The following object is masked from ‘package:dplyr’:
+
+    group_rows
+
+Loading required package: foreach
+
+Attaching package: ‘foreach’
+
+The following objects are masked from ‘package:purrr’:
+
+    accumulate, when
+
+Loading required package: iterators
+Loading required package: parallel
+Loading required package: rngtools
+
+Attaching package: ‘magrittr’
+
+The following object is masked from ‘package:purrr’:
+
+    set_names
+
+The following object is masked from ‘package:tidyr’:
+
+    extract
+
+
+Attaching package: ‘cowplot’
+
+The following object is masked from ‘package:lubridate’:
+
+    stamp
+
+> source(paste0(here::here(), "/0-utils/1-plot-functions.R"))
+> 
+> # define results path in Box 
+> diar0_results_dir <- paste0(offset_results_path, "gam_outputs/diarrhea-adjusted-0/")
+> pathogen_results_dir <- paste0(offset_results_path, "gam_outputs/pathogens-adjusted/")
+> 
+> # define list of temperature variable names
+> temp_vars <- list("temp_weekmax_0weeklag_C", "temp_weekmax_1weeklag_C",
++                   "temp_weekmin_0weeklag_C", "temp_weekmin_1weeklag_C",
++                   "temp_monthmax_0weeklag_C", "temp_monthmin_0weeklag_C","temp_monthavg_0weeklag_C",
++                   "temp_monthmax_1weeklag_C", "temp_monthmin_1weeklag_C","temp_monthavg_1weeklag_C",
++                   "temp_weekavg_0weeklag_C",
++                   "temp_weekavg_1weeklag_C",
++                   "temp_weekavg_2weeklag_C",
++                   "temp_weekavg_3weeklag_C")
+> #------------------------------------------------------
+> ## Make plots
+> #------------------------------------------------------
+> set.seed(22242)
+> plot_diar0_list <- lapply(temp_vars %>% keep(!grepl("0weeklag_", temp_vars)) , function(x) 
++   prep_gam_plot(results_directory = diar0_results_dir, 
++                      yname = "diar7d_0_", 
++                      risk_factor = x)) 
+[1] "2024-05-13 11:56:31 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/diarrhea-adjusted-0/gam_diar7d_0_temp_weekmax_1weeklag_C.RDS"
+[1] "aged_C"         "HHwealth_quart"
+[1] "2024-05-13 11:56:38 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/diarrhea-adjusted-0/gam_diar7d_0_temp_weekmin_1weeklag_C.RDS"
+[1] "aged_C"         "HHwealth_quart"
+[1] "2024-05-13 11:56:44 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/diarrhea-adjusted-0/gam_diar7d_0_temp_monthmax_1weeklag_C.RDS"
+[1] "aged_C"         "HHwealth_quart"
+[1] "2024-05-13 11:56:50 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/diarrhea-adjusted-0/gam_diar7d_0_temp_monthmin_1weeklag_C.RDS"
+[1] "aged_C"         "HHwealth_quart"
+[1] "2024-05-13 11:56:55 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/diarrhea-adjusted-0/gam_diar7d_0_temp_monthavg_1weeklag_C.RDS"
+[1] "aged_C"         "HHwealth_quart"
+[1] "2024-05-09 12:28:45 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/diarrhea-adjusted-0/gam_diar7d_0_temp_weekavg_1weeklag_C.RDS"
+[1] "aged_C"         "HHwealth_quart"
+[1] "2024-05-09 12:32:06 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/diarrhea-adjusted-0/gam_diar7d_0_temp_weekavg_2weeklag_C.RDS"
+[1] "aged_C"         "HHwealth_quart"
+[1] "2024-05-13 11:54:22 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/diarrhea-adjusted-0/gam_diar7d_0_temp_weekavg_3weeklag_C.RDS"
+[1] "aged_C"         "HHwealth_quart"
+> 
+> plot_diar0_data <- plot_diar0_list %>% bind_rows() %>% 
++   mutate(outcome = "Diarrhea - control arm")
+> 
+> # pathogen outcomes
+> path_outcomes <- c(
++   "pos_Adenovirus40_41_",
++   # "pos_aEPEC_",
++   "pos_Aeromonas_",
++   "pos_B_fragilis_",
++   "pos_C_difficile_",
++   "pos_Campylobacter_",
++   "pos_Cryptosporidium_",
++   "pos_E_bieneusi_",
++   "pos_EAEC_",
++   "pos_EPEC_any_",
++   "pos_ETEC_any_",
++   "pos_Giardia_",
++   # "pos_LT_ETEC_",
++   "pos_Norovirus_",
++   "pos_parasite_",
++   "pos_Plesiomonas_",
++   "pos_Sapovirus_",
++   "pos_Shigella_EIEC_",
++   # "pos_ST_ETEC_",
++   "pos_STEC_",
++   # "pos_tEPEC_",
++   "pos_virus_"
++ )
+> 
+> plot_pathogen_list <- list()
+> 
+> set.seed(22242)
+> for(i in 1:length(path_outcomes)){
++ 
++   print(path_outcomes[i])
++   plot_pathogen_y_list <- lapply(temp_vars, function(x) 
++     prep_gam_plot(results_directory = pathogen_results_dir, 
++                     yname = path_outcomes[i], 
++                     risk_factor = x)) 
++   plot_pathogen_list[[i]] <- plot_pathogen_y_list %>% bind_rows() %>% 
++     mutate(outcome = path_outcomes[i])
++ }
+[1] "pos_Adenovirus40_41_"
+[1] "2024-05-13 11:57:15 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Adenovirus40_41_temp_weekmax_0weeklag_C.RDS"
+[1] "wsh" "sex"
+sex
+[1] "2024-05-13 11:57:18 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Adenovirus40_41_temp_weekmax_1weeklag_C.RDS"
+[1] "wsh" "sex"
+sex
+[1] "2024-05-13 11:57:20 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Adenovirus40_41_temp_weekmin_0weeklag_C.RDS"
+[1] "wsh" "sex"
+sex
+[1] "2024-05-13 11:57:23 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Adenovirus40_41_temp_weekmin_1weeklag_C.RDS"
+[1] "wsh" "sex"
+sex
+[1] "2024-05-13 11:57:25 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Adenovirus40_41_temp_monthmax_0weeklag_C.RDS"
+[1] "wsh" "sex"
+sex
+[1] "2024-05-13 11:57:27 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Adenovirus40_41_temp_monthmin_0weeklag_C.RDS"
+[1] "wsh" "sex"
+sex
+[1] "2024-05-13 11:57:30 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Adenovirus40_41_temp_monthavg_0weeklag_C.RDS"
+[1] "wsh" "sex"
+sex
+[1] "2024-05-13 11:57:32 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Adenovirus40_41_temp_monthmax_1weeklag_C.RDS"
+[1] "wsh" "sex"
+sex
+[1] "2024-05-13 11:57:34 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Adenovirus40_41_temp_monthmin_1weeklag_C.RDS"
+[1] "wsh" "sex"
+sex
+[1] "2024-05-13 11:57:36 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Adenovirus40_41_temp_monthavg_1weeklag_C.RDS"
+[1] "wsh" "sex"
+sex
+[1] "2024-05-13 11:57:39 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Adenovirus40_41_temp_weekavg_0weeklag_C.RDS"
+[1] "wsh" "sex"
+sex
+[1] "2024-05-09 12:32:26 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Adenovirus40_41_temp_weekavg_1weeklag_C.RDS"
+[1] "wsh" "sex"
+sex
+[1] "2024-05-09 12:32:44 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Adenovirus40_41_temp_weekavg_2weeklag_C.RDS"
+[1] "wsh" "sex"
+sex
+[1] "2024-05-13 11:54:29 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Adenovirus40_41_temp_weekavg_3weeklag_C.RDS"
+[1] "wsh" "sex"
+sex
+[1] "pos_Aeromonas_"
+[1] "2024-05-13 11:57:44 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Aeromonas_temp_weekmax_0weeklag_C.RDS"
+[1] "aged_C" "abx_7d"
+abx_7d
+[1] "2024-05-13 11:57:46 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Aeromonas_temp_weekmax_1weeklag_C.RDS"
+[1] "aged_C" "abx_7d"
+abx_7d
+[1] "2024-05-13 11:57:49 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Aeromonas_temp_weekmin_0weeklag_C.RDS"
+[1] "aged_C" "abx_7d"
+abx_7d
+[1] "2024-05-13 11:57:50 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Aeromonas_temp_weekmin_1weeklag_C.RDS"
+[1] "aged_C" "abx_7d"
+abx_7d
+[1] "2024-05-13 11:57:52 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Aeromonas_temp_monthmax_0weeklag_C.RDS"
+[1] "aged_C" "abx_7d"
+abx_7d
+[1] "2024-05-13 11:57:54 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Aeromonas_temp_monthmin_0weeklag_C.RDS"
+[1] "aged_C" "abx_7d"
+abx_7d
+[1] "2024-05-13 11:57:57 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Aeromonas_temp_monthavg_0weeklag_C.RDS"
+[1] "aged_C" "abx_7d"
+abx_7d
+[1] "2024-05-13 11:57:58 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Aeromonas_temp_monthmax_1weeklag_C.RDS"
+[1] "aged_C" "abx_7d"
+abx_7d
+[1] "2024-05-13 11:58:01 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Aeromonas_temp_monthmin_1weeklag_C.RDS"
+[1] "aged_C" "abx_7d"
+abx_7d
+[1] "2024-05-13 11:58:03 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Aeromonas_temp_monthavg_1weeklag_C.RDS"
+[1] "aged_C" "abx_7d"
+abx_7d
+[1] "2024-05-13 11:58:05 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Aeromonas_temp_weekavg_0weeklag_C.RDS"
+[1] "aged_C" "abx_7d"
+abx_7d
+[1] "2024-05-09 12:32:47 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Aeromonas_temp_weekavg_1weeklag_C.RDS"
+[1] "aged_C" "abx_7d"
+abx_7d
+[1] "2024-05-09 12:32:50 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Aeromonas_temp_weekavg_2weeklag_C.RDS"
+[1] "aged_C" "abx_7d"
+abx_7d
+[1] "2024-05-13 11:54:41 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Aeromonas_temp_weekavg_3weeklag_C.RDS"
+[1] "aged_C" "abx_7d"
+abx_7d
+[1] "pos_B_fragilis_"
+[1] "2024-05-13 11:58:10 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_B_fragilis_temp_weekmax_0weeklag_C.RDS"
+[1] "wsh"       "nutrition"
+[1] "2024-05-13 11:58:12 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_B_fragilis_temp_weekmax_1weeklag_C.RDS"
+[1] "wsh"       "nutrition"
+[1] "2024-05-13 11:58:14 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_B_fragilis_temp_weekmin_0weeklag_C.RDS"
+[1] "wsh"       "nutrition"
+[1] "2024-05-13 11:58:17 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_B_fragilis_temp_weekmin_1weeklag_C.RDS"
+[1] "wsh"       "nutrition"
+[1] "2024-05-13 11:58:19 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_B_fragilis_temp_monthmax_0weeklag_C.RDS"
+[1] "wsh"       "nutrition"
+[1] "2024-05-13 11:58:21 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_B_fragilis_temp_monthmin_0weeklag_C.RDS"
+[1] "wsh"       "nutrition"
+[1] "2024-05-13 11:58:23 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_B_fragilis_temp_monthavg_0weeklag_C.RDS"
+[1] "wsh"       "nutrition"
+[1] "2024-05-13 11:58:26 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_B_fragilis_temp_monthmax_1weeklag_C.RDS"
+[1] "wsh"       "nutrition"
+[1] "2024-05-13 11:58:28 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_B_fragilis_temp_monthmin_1weeklag_C.RDS"
+[1] "wsh"       "nutrition"
+[1] "2024-05-13 11:58:30 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_B_fragilis_temp_monthavg_1weeklag_C.RDS"
+[1] "wsh"       "nutrition"
+[1] "2024-05-13 11:58:32 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_B_fragilis_temp_weekavg_0weeklag_C.RDS"
+[1] "wsh"       "nutrition"
+[1] "2024-05-09 12:32:53 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_B_fragilis_temp_weekavg_1weeklag_C.RDS"
+[1] "wsh"       "nutrition"
+[1] "2024-05-09 12:32:55 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_B_fragilis_temp_weekavg_2weeklag_C.RDS"
+[1] "wsh"       "nutrition"
+[1] "2024-05-13 11:54:45 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_B_fragilis_temp_weekavg_3weeklag_C.RDS"
+[1] "wsh"       "nutrition"
+[1] "pos_C_difficile_"
+[1] "2024-05-13 11:58:36 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_C_difficile_temp_weekmax_0weeklag_C.RDS"
+[1] "HHwealth_quart"
+[1] "2024-05-13 11:58:39 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_C_difficile_temp_weekmax_1weeklag_C.RDS"
+[1] "HHwealth_quart"
+[1] "2024-05-13 11:58:41 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_C_difficile_temp_weekmin_0weeklag_C.RDS"
+[1] "HHwealth_quart"
+[1] "2024-05-13 11:58:43 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_C_difficile_temp_weekmin_1weeklag_C.RDS"
+[1] "HHwealth_quart"
+[1] "2024-05-13 11:58:45 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_C_difficile_temp_monthmax_0weeklag_C.RDS"
+[1] "HHwealth_quart"
+[1] "2024-05-13 11:58:48 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_C_difficile_temp_monthmin_0weeklag_C.RDS"
+[1] "HHwealth_quart"
+[1] "2024-05-13 11:58:50 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_C_difficile_temp_monthavg_0weeklag_C.RDS"
+[1] "HHwealth_quart"
+[1] "2024-05-13 11:58:52 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_C_difficile_temp_monthmax_1weeklag_C.RDS"
+[1] "HHwealth_quart"
+[1] "2024-05-13 11:58:54 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_C_difficile_temp_monthmin_1weeklag_C.RDS"
+[1] "HHwealth_quart"
+[1] "2024-05-13 11:58:56 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_C_difficile_temp_monthavg_1weeklag_C.RDS"
+[1] "HHwealth_quart"
+[1] "2024-05-13 11:58:58 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_C_difficile_temp_weekavg_0weeklag_C.RDS"
+[1] "HHwealth_quart"
+[1] "2024-05-09 12:32:57 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_C_difficile_temp_weekavg_1weeklag_C.RDS"
+[1] "HHwealth_quart"
+[1] "2024-05-09 12:33:00 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_C_difficile_temp_weekavg_2weeklag_C.RDS"
+[1] "HHwealth_quart"
+[1] "2024-05-13 11:54:49 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_C_difficile_temp_weekavg_3weeklag_C.RDS"
+[1] "HHwealth_quart"
+[1] "pos_Campylobacter_"
+[1] "2024-05-13 11:59:04 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Campylobacter_temp_weekmax_0weeklag_C.RDS"
+[1] "abx_7d"         "aged_C"         "HHwealth_quart"
+abx_7d
+[1] "2024-05-13 11:59:06 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Campylobacter_temp_weekmax_1weeklag_C.RDS"
+[1] "abx_7d"         "aged_C"         "HHwealth_quart"
+abx_7d
+[1] "2024-05-13 11:59:08 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Campylobacter_temp_weekmin_0weeklag_C.RDS"
+[1] "abx_7d"         "aged_C"         "HHwealth_quart"
+abx_7d
+[1] "2024-05-13 11:59:10 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Campylobacter_temp_weekmin_1weeklag_C.RDS"
+[1] "abx_7d"         "aged_C"         "HHwealth_quart"
+abx_7d
+[1] "2024-05-13 11:59:13 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Campylobacter_temp_monthmax_0weeklag_C.RDS"
+[1] "abx_7d"         "aged_C"         "HHwealth_quart"
+abx_7d
+[1] "2024-05-13 11:59:15 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Campylobacter_temp_monthmin_0weeklag_C.RDS"
+[1] "abx_7d"         "aged_C"         "HHwealth_quart"
+abx_7d
+[1] "2024-05-13 11:59:17 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Campylobacter_temp_monthavg_0weeklag_C.RDS"
+[1] "abx_7d"         "aged_C"         "HHwealth_quart"
+abx_7d
+[1] "2024-05-13 11:59:20 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Campylobacter_temp_monthmax_1weeklag_C.RDS"
+[1] "abx_7d"         "aged_C"         "HHwealth_quart"
+abx_7d
+[1] "2024-05-13 11:59:22 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Campylobacter_temp_monthmin_1weeklag_C.RDS"
+[1] "abx_7d"         "aged_C"         "HHwealth_quart"
+abx_7d
+[1] "2024-05-13 11:59:24 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Campylobacter_temp_monthavg_1weeklag_C.RDS"
+[1] "abx_7d"         "aged_C"         "HHwealth_quart"
+abx_7d
+[1] "2024-05-13 11:59:26 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Campylobacter_temp_weekavg_0weeklag_C.RDS"
+[1] "abx_7d"         "aged_C"         "HHwealth_quart"
+abx_7d
+[1] "2024-05-09 12:33:02 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Campylobacter_temp_weekavg_1weeklag_C.RDS"
+[1] "abx_7d"         "aged_C"         "HHwealth_quart"
+abx_7d
+[1] "2024-05-09 12:33:05 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Campylobacter_temp_weekavg_2weeklag_C.RDS"
+[1] "abx_7d"         "aged_C"         "HHwealth_quart"
+abx_7d
+[1] "2024-05-13 11:54:57 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Campylobacter_temp_weekavg_3weeklag_C.RDS"
+[1] "abx_7d"         "aged_C"         "HHwealth_quart"
+abx_7d
+[1] "pos_Cryptosporidium_"
+[1] "2024-05-13 11:59:32 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Cryptosporidium_temp_weekmax_0weeklag_C.RDS"
+[1] "aged_C" "wsh"   
+[1] "2024-05-13 11:59:33 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Cryptosporidium_temp_weekmax_1weeklag_C.RDS"
+[1] "aged_C" "wsh"   
+[1] "2024-05-13 11:59:35 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Cryptosporidium_temp_weekmin_0weeklag_C.RDS"
+[1] "aged_C" "wsh"   
+[1] "2024-05-13 11:59:37 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Cryptosporidium_temp_weekmin_1weeklag_C.RDS"
+[1] "aged_C" "wsh"   
+[1] "2024-05-13 11:59:39 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Cryptosporidium_temp_monthmax_0weeklag_C.RDS"
+[1] "aged_C" "wsh"   
+[1] "2024-05-13 11:59:40 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Cryptosporidium_temp_monthmin_0weeklag_C.RDS"
+[1] "aged_C" "wsh"   
+[1] "2024-05-13 11:59:42 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Cryptosporidium_temp_monthavg_0weeklag_C.RDS"
+[1] "aged_C" "wsh"   
+[1] "2024-05-13 11:59:44 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Cryptosporidium_temp_monthmax_1weeklag_C.RDS"
+[1] "aged_C" "wsh"   
+[1] "2024-05-13 11:59:46 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Cryptosporidium_temp_monthmin_1weeklag_C.RDS"
+[1] "aged_C" "wsh"   
+[1] "2024-05-13 11:59:48 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Cryptosporidium_temp_monthavg_1weeklag_C.RDS"
+[1] "aged_C" "wsh"   
+[1] "2024-05-13 11:59:50 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Cryptosporidium_temp_weekavg_0weeklag_C.RDS"
+[1] "aged_C" "wsh"   
+[1] "2024-05-09 12:33:07 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Cryptosporidium_temp_weekavg_1weeklag_C.RDS"
+[1] "aged_C" "wsh"   
+[1] "2024-05-09 12:33:09 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Cryptosporidium_temp_weekavg_2weeklag_C.RDS"
+[1] "aged_C" "wsh"   
+[1] "2024-05-13 11:55:01 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Cryptosporidium_temp_weekavg_3weeklag_C.RDS"
+[1] "aged_C" "wsh"   
+[1] "pos_E_bieneusi_"
+[1] "2024-05-13 11:59:53 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_E_bieneusi_temp_weekmax_0weeklag_C.RDS"
+[1] "HHwealth_quart" "aged_C"        
+[1] "2024-05-13 11:59:55 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_E_bieneusi_temp_weekmax_1weeklag_C.RDS"
+[1] "HHwealth_quart" "aged_C"        
+[1] "2024-05-13 11:59:56 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_E_bieneusi_temp_weekmin_0weeklag_C.RDS"
+[1] "HHwealth_quart" "aged_C"        
+[1] "2024-05-13 11:59:58 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_E_bieneusi_temp_weekmin_1weeklag_C.RDS"
+[1] "HHwealth_quart" "aged_C"        
+[1] "2024-05-13 12:00:00 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_E_bieneusi_temp_monthmax_0weeklag_C.RDS"
+[1] "HHwealth_quart" "aged_C"        
+[1] "2024-05-13 12:00:02 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_E_bieneusi_temp_monthmin_0weeklag_C.RDS"
+[1] "HHwealth_quart" "aged_C"        
+[1] "2024-05-13 12:00:04 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_E_bieneusi_temp_monthavg_0weeklag_C.RDS"
+[1] "HHwealth_quart" "aged_C"        
+[1] "2024-05-13 12:00:06 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_E_bieneusi_temp_monthmax_1weeklag_C.RDS"
+[1] "HHwealth_quart" "aged_C"        
+[1] "2024-05-13 12:00:07 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_E_bieneusi_temp_monthmin_1weeklag_C.RDS"
+[1] "HHwealth_quart" "aged_C"        
+[1] "2024-05-13 12:00:09 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_E_bieneusi_temp_monthavg_1weeklag_C.RDS"
+[1] "HHwealth_quart" "aged_C"        
+[1] "2024-05-13 12:00:11 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_E_bieneusi_temp_weekavg_0weeklag_C.RDS"
+[1] "HHwealth_quart" "aged_C"        
+[1] "2024-05-09 12:33:12 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_E_bieneusi_temp_weekavg_1weeklag_C.RDS"
+[1] "HHwealth_quart" "aged_C"        
+[1] "2024-05-09 12:33:14 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_E_bieneusi_temp_weekavg_2weeklag_C.RDS"
+[1] "HHwealth_quart" "aged_C"        
+[1] "2024-05-13 11:55:04 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_E_bieneusi_temp_weekavg_3weeklag_C.RDS"
+[1] "HHwealth_quart" "aged_C"        
+[1] "pos_EAEC_"
+[1] "2024-05-13 12:00:15 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_EAEC_temp_weekmax_0weeklag_C.RDS"
+[1] "aged_C" "wsh"   
+[1] "2024-05-13 12:00:17 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_EAEC_temp_weekmax_1weeklag_C.RDS"
+[1] "aged_C" "wsh"   
+[1] "2024-05-13 12:00:19 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_EAEC_temp_weekmin_0weeklag_C.RDS"
+[1] "aged_C" "wsh"   
+[1] "2024-05-13 12:00:21 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_EAEC_temp_weekmin_1weeklag_C.RDS"
+[1] "aged_C" "wsh"   
+[1] "2024-05-13 12:00:23 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_EAEC_temp_monthmax_0weeklag_C.RDS"
+[1] "aged_C" "wsh"   
+[1] "2024-05-13 12:00:25 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_EAEC_temp_monthmin_0weeklag_C.RDS"
+[1] "aged_C" "wsh"   
+[1] "2024-05-13 12:00:27 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_EAEC_temp_monthavg_0weeklag_C.RDS"
+[1] "aged_C" "wsh"   
+[1] "2024-05-13 12:00:28 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_EAEC_temp_monthmax_1weeklag_C.RDS"
+[1] "aged_C" "wsh"   
+[1] "2024-05-13 12:00:30 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_EAEC_temp_monthmin_1weeklag_C.RDS"
+[1] "aged_C" "wsh"   
+[1] "2024-05-13 12:00:32 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_EAEC_temp_monthavg_1weeklag_C.RDS"
+[1] "aged_C" "wsh"   
+[1] "2024-05-13 12:00:34 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_EAEC_temp_weekavg_0weeklag_C.RDS"
+[1] "aged_C" "wsh"   
+[1] "2024-05-09 12:33:16 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_EAEC_temp_weekavg_1weeklag_C.RDS"
+[1] "aged_C" "wsh"   
+[1] "2024-05-09 12:33:18 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_EAEC_temp_weekavg_2weeklag_C.RDS"
+[1] "aged_C" "wsh"   
+[1] "2024-05-13 11:55:07 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_EAEC_temp_weekavg_3weeklag_C.RDS"
+[1] "aged_C" "wsh"   
+[1] "pos_EPEC_any_"
+[1] "2024-05-13 12:00:39 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_EPEC_any_temp_weekmax_0weeklag_C.RDS"
+[1] "abx_7d" "aged_C"
+abx_7d
+[1] "2024-05-13 12:00:41 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_EPEC_any_temp_weekmax_1weeklag_C.RDS"
+[1] "abx_7d" "aged_C"
+abx_7d
+[1] "2024-05-13 12:00:44 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_EPEC_any_temp_weekmin_0weeklag_C.RDS"
+[1] "abx_7d" "aged_C"
+abx_7d
+[1] "2024-05-13 12:00:46 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_EPEC_any_temp_weekmin_1weeklag_C.RDS"
+[1] "abx_7d" "aged_C"
+abx_7d
+[1] "2024-05-13 12:00:49 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_EPEC_any_temp_monthmax_0weeklag_C.RDS"
+[1] "abx_7d" "aged_C"
+abx_7d
+[1] "2024-05-13 12:00:51 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_EPEC_any_temp_monthmin_0weeklag_C.RDS"
+[1] "abx_7d" "aged_C"
+abx_7d
+[1] "2024-05-13 12:00:54 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_EPEC_any_temp_monthavg_0weeklag_C.RDS"
+[1] "abx_7d" "aged_C"
+abx_7d
+[1] "2024-05-13 12:00:57 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_EPEC_any_temp_monthmax_1weeklag_C.RDS"
+[1] "abx_7d" "aged_C"
+abx_7d
+[1] "2024-05-13 12:00:59 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_EPEC_any_temp_monthmin_1weeklag_C.RDS"
+[1] "abx_7d" "aged_C"
+abx_7d
+[1] "2024-05-13 12:01:02 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_EPEC_any_temp_monthavg_1weeklag_C.RDS"
+[1] "abx_7d" "aged_C"
+abx_7d
+[1] "2024-05-13 12:01:04 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_EPEC_any_temp_weekavg_0weeklag_C.RDS"
+[1] "abx_7d" "aged_C"
+abx_7d
+[1] "2024-05-09 12:33:20 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_EPEC_any_temp_weekavg_1weeklag_C.RDS"
+[1] "abx_7d" "aged_C"
+abx_7d
+[1] "2024-05-09 12:33:23 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_EPEC_any_temp_weekavg_2weeklag_C.RDS"
+[1] "abx_7d" "aged_C"
+abx_7d
+[1] "2024-05-13 11:55:15 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_EPEC_any_temp_weekavg_3weeklag_C.RDS"
+[1] "abx_7d" "aged_C"
+abx_7d
+[1] "pos_ETEC_any_"
+[1] "2024-05-13 12:01:09 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_ETEC_any_temp_weekmax_0weeklag_C.RDS"
+[1] "HHwealth_quart" "abx_7d"         "aged_C"        
+abx_7d
+[1] "2024-05-13 12:01:12 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_ETEC_any_temp_weekmax_1weeklag_C.RDS"
+[1] "HHwealth_quart" "abx_7d"         "aged_C"        
+abx_7d
+[1] "2024-05-13 12:01:14 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_ETEC_any_temp_weekmin_0weeklag_C.RDS"
+[1] "HHwealth_quart" "abx_7d"         "aged_C"        
+abx_7d
+[1] "2024-05-13 12:01:17 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_ETEC_any_temp_weekmin_1weeklag_C.RDS"
+[1] "HHwealth_quart" "abx_7d"         "aged_C"        
+abx_7d
+[1] "2024-05-13 12:01:19 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_ETEC_any_temp_monthmax_0weeklag_C.RDS"
+[1] "HHwealth_quart" "abx_7d"         "aged_C"        
+abx_7d
+[1] "2024-05-13 12:01:22 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_ETEC_any_temp_monthmin_0weeklag_C.RDS"
+[1] "HHwealth_quart" "abx_7d"         "aged_C"        
+abx_7d
+[1] "2024-05-13 12:01:24 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_ETEC_any_temp_monthavg_0weeklag_C.RDS"
+[1] "HHwealth_quart" "abx_7d"         "aged_C"        
+abx_7d
+[1] "2024-05-13 12:01:27 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_ETEC_any_temp_monthmax_1weeklag_C.RDS"
+[1] "HHwealth_quart" "abx_7d"         "aged_C"        
+abx_7d
+[1] "2024-05-13 12:01:30 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_ETEC_any_temp_monthmin_1weeklag_C.RDS"
+[1] "HHwealth_quart" "abx_7d"         "aged_C"        
+abx_7d
+[1] "2024-05-13 12:01:32 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_ETEC_any_temp_monthavg_1weeklag_C.RDS"
+[1] "HHwealth_quart" "abx_7d"         "aged_C"        
+abx_7d
+[1] "2024-05-13 12:01:35 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_ETEC_any_temp_weekavg_0weeklag_C.RDS"
+[1] "HHwealth_quart" "abx_7d"         "aged_C"        
+abx_7d
+[1] "2024-05-09 12:33:26 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_ETEC_any_temp_weekavg_1weeklag_C.RDS"
+[1] "HHwealth_quart" "abx_7d"         "aged_C"        
+abx_7d
+[1] "2024-05-09 12:33:28 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_ETEC_any_temp_weekavg_2weeklag_C.RDS"
+[1] "HHwealth_quart" "abx_7d"         "aged_C"        
+abx_7d
+[1] "2024-05-13 11:55:11 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_ETEC_any_temp_weekavg_3weeklag_C.RDS"
+[1] "HHwealth_quart" "abx_7d"         "aged_C"        
+abx_7d
+[1] "pos_Giardia_"
+[1] "2024-05-13 12:01:41 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Giardia_temp_weekmax_0weeklag_C.RDS"
+[1] "HHwealth_quart" "aged_C"        
+[1] "2024-05-13 12:01:43 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Giardia_temp_weekmax_1weeklag_C.RDS"
+[1] "HHwealth_quart" "aged_C"        
+[1] "2024-05-13 12:01:45 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Giardia_temp_weekmin_0weeklag_C.RDS"
+[1] "HHwealth_quart" "aged_C"        
+[1] "2024-05-13 12:01:48 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Giardia_temp_weekmin_1weeklag_C.RDS"
+[1] "HHwealth_quart" "aged_C"        
+[1] "2024-05-13 12:01:50 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Giardia_temp_monthmax_0weeklag_C.RDS"
+[1] "HHwealth_quart" "aged_C"        
+[1] "2024-05-13 12:01:52 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Giardia_temp_monthmin_0weeklag_C.RDS"
+[1] "HHwealth_quart" "aged_C"        
+[1] "2024-05-13 12:01:55 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Giardia_temp_monthavg_0weeklag_C.RDS"
+[1] "HHwealth_quart" "aged_C"        
+[1] "2024-05-13 12:01:57 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Giardia_temp_monthmax_1weeklag_C.RDS"
+[1] "HHwealth_quart" "aged_C"        
+[1] "2024-05-13 12:01:59 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Giardia_temp_monthmin_1weeklag_C.RDS"
+[1] "HHwealth_quart" "aged_C"        
+[1] "2024-05-13 12:02:01 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Giardia_temp_monthavg_1weeklag_C.RDS"
+[1] "HHwealth_quart" "aged_C"        
+[1] "2024-05-13 12:02:03 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Giardia_temp_weekavg_0weeklag_C.RDS"
+[1] "HHwealth_quart" "aged_C"        
+[1] "2024-05-09 12:33:31 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Giardia_temp_weekavg_1weeklag_C.RDS"
+[1] "HHwealth_quart" "aged_C"        
+[1] "2024-05-09 12:33:33 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Giardia_temp_weekavg_2weeklag_C.RDS"
+[1] "HHwealth_quart" "aged_C"        
+[1] "2024-05-13 11:55:19 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Giardia_temp_weekavg_3weeklag_C.RDS"
+[1] "HHwealth_quart" "aged_C"        
+[1] "pos_Norovirus_"
+[1] "2024-05-13 12:02:09 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Norovirus_temp_weekmax_0weeklag_C.RDS"
+[1] "wsh"            "HHwealth_quart"
+[1] "2024-05-13 12:02:11 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Norovirus_temp_weekmax_1weeklag_C.RDS"
+[1] "wsh"            "HHwealth_quart"
+[1] "2024-05-13 12:02:13 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Norovirus_temp_weekmin_0weeklag_C.RDS"
+[1] "wsh"            "HHwealth_quart"
+[1] "2024-05-13 12:02:15 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Norovirus_temp_weekmin_1weeklag_C.RDS"
+[1] "wsh"            "HHwealth_quart"
+[1] "2024-05-13 12:02:17 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Norovirus_temp_monthmax_0weeklag_C.RDS"
+[1] "wsh"            "HHwealth_quart"
+[1] "2024-05-13 12:02:19 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Norovirus_temp_monthmin_0weeklag_C.RDS"
+[1] "wsh"            "HHwealth_quart"
+[1] "2024-05-13 12:02:21 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Norovirus_temp_monthavg_0weeklag_C.RDS"
+[1] "wsh"            "HHwealth_quart"
+[1] "2024-05-13 12:02:23 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Norovirus_temp_monthmax_1weeklag_C.RDS"
+[1] "wsh"            "HHwealth_quart"
+[1] "2024-05-13 12:02:25 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Norovirus_temp_monthmin_1weeklag_C.RDS"
+[1] "wsh"            "HHwealth_quart"
+[1] "2024-05-13 12:02:27 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Norovirus_temp_monthavg_1weeklag_C.RDS"
+[1] "wsh"            "HHwealth_quart"
+[1] "2024-05-13 12:02:29 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Norovirus_temp_weekavg_0weeklag_C.RDS"
+[1] "wsh"            "HHwealth_quart"
+[1] "2024-05-09 12:33:36 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Norovirus_temp_weekavg_1weeklag_C.RDS"
+[1] "wsh"            "HHwealth_quart"
+[1] "2024-05-09 12:33:38 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Norovirus_temp_weekavg_2weeklag_C.RDS"
+[1] "wsh"            "HHwealth_quart"
+[1] "2024-05-13 11:55:30 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Norovirus_temp_weekavg_3weeklag_C.RDS"
+[1] "wsh"            "HHwealth_quart"
+[1] "pos_parasite_"
+[1] "2024-05-13 12:02:34 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_parasite_temp_weekmax_0weeklag_C.RDS"
+[1] "HHwealth_quart"
+[1] "2024-05-13 12:02:36 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_parasite_temp_weekmax_1weeklag_C.RDS"
+[1] "HHwealth_quart"
+[1] "2024-05-13 12:02:39 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_parasite_temp_weekmin_0weeklag_C.RDS"
+[1] "HHwealth_quart"
+[1] "2024-05-13 12:02:41 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_parasite_temp_weekmin_1weeklag_C.RDS"
+[1] "HHwealth_quart"
+[1] "2024-05-13 12:02:43 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_parasite_temp_monthmax_0weeklag_C.RDS"
+[1] "HHwealth_quart"
+[1] "2024-05-13 12:02:46 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_parasite_temp_monthmin_0weeklag_C.RDS"
+[1] "HHwealth_quart"
+[1] "2024-05-13 12:02:48 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_parasite_temp_monthavg_0weeklag_C.RDS"
+[1] "HHwealth_quart"
+[1] "2024-05-13 12:02:50 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_parasite_temp_monthmax_1weeklag_C.RDS"
+[1] "HHwealth_quart"
+[1] "2024-05-13 12:02:52 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_parasite_temp_monthmin_1weeklag_C.RDS"
+[1] "HHwealth_quart"
+[1] "2024-05-13 12:02:55 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_parasite_temp_monthavg_1weeklag_C.RDS"
+[1] "HHwealth_quart"
+[1] "2024-05-13 12:02:57 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_parasite_temp_weekavg_0weeklag_C.RDS"
+[1] "HHwealth_quart"
+[1] "2024-05-09 12:33:41 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_parasite_temp_weekavg_1weeklag_C.RDS"
+[1] "HHwealth_quart"
+[1] "2024-05-09 12:33:43 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_parasite_temp_weekavg_2weeklag_C.RDS"
+[1] "HHwealth_quart"
+[1] "2024-05-13 11:55:34 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_parasite_temp_weekavg_3weeklag_C.RDS"
+[1] "HHwealth_quart"
+[1] "pos_Plesiomonas_"
+[1] "2024-05-13 12:03:03 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Plesiomonas_temp_weekmax_0weeklag_C.RDS"
+[1] "aged_C"         "abx_7d"         "HHwealth_quart"
+abx_7d
+[1] "2024-05-13 12:03:05 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Plesiomonas_temp_weekmax_1weeklag_C.RDS"
+[1] "aged_C"         "abx_7d"         "HHwealth_quart"
+abx_7d
+[1] "2024-05-13 12:03:07 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Plesiomonas_temp_weekmin_0weeklag_C.RDS"
+[1] "aged_C"         "abx_7d"         "HHwealth_quart"
+abx_7d
+[1] "2024-05-13 12:03:10 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Plesiomonas_temp_weekmin_1weeklag_C.RDS"
+[1] "aged_C"         "abx_7d"         "HHwealth_quart"
+abx_7d
+[1] "2024-05-13 12:03:12 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Plesiomonas_temp_monthmax_0weeklag_C.RDS"
+[1] "aged_C"         "abx_7d"         "HHwealth_quart"
+abx_7d
+[1] "2024-05-13 12:03:15 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Plesiomonas_temp_monthmin_0weeklag_C.RDS"
+[1] "aged_C"         "abx_7d"         "HHwealth_quart"
+abx_7d
+[1] "2024-05-13 12:03:17 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Plesiomonas_temp_monthavg_0weeklag_C.RDS"
+[1] "aged_C"         "abx_7d"         "HHwealth_quart"
+abx_7d
+[1] "2024-05-13 12:03:20 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Plesiomonas_temp_monthmax_1weeklag_C.RDS"
+[1] "aged_C"         "abx_7d"         "HHwealth_quart"
+abx_7d
+[1] "2024-05-13 12:03:23 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Plesiomonas_temp_monthmin_1weeklag_C.RDS"
+[1] "aged_C"         "abx_7d"         "HHwealth_quart"
+abx_7d
+[1] "2024-05-13 12:03:25 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Plesiomonas_temp_monthavg_1weeklag_C.RDS"
+[1] "aged_C"         "abx_7d"         "HHwealth_quart"
+abx_7d
+[1] "2024-05-13 12:03:27 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Plesiomonas_temp_weekavg_0weeklag_C.RDS"
+[1] "aged_C"         "abx_7d"         "HHwealth_quart"
+abx_7d
+[1] "2024-05-09 12:33:46 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Plesiomonas_temp_weekavg_1weeklag_C.RDS"
+[1] "aged_C"         "abx_7d"         "HHwealth_quart"
+abx_7d
+[1] "2024-05-09 12:33:48 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Plesiomonas_temp_weekavg_2weeklag_C.RDS"
+[1] "aged_C"         "abx_7d"         "HHwealth_quart"
+abx_7d
+[1] "2024-05-13 11:55:38 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Plesiomonas_temp_weekavg_3weeklag_C.RDS"
+[1] "aged_C"         "abx_7d"         "HHwealth_quart"
+abx_7d
+[1] "pos_Sapovirus_"
+[1] "2024-05-13 12:03:33 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Sapovirus_temp_weekmax_0weeklag_C.RDS"
+[1] "wsh"
+[1] "2024-05-13 12:03:35 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Sapovirus_temp_weekmax_1weeklag_C.RDS"
+[1] "wsh"
+[1] "2024-05-13 12:03:37 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Sapovirus_temp_weekmin_0weeklag_C.RDS"
+[1] "wsh"
+[1] "2024-05-13 12:03:41 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Sapovirus_temp_weekmin_1weeklag_C.RDS"
+[1] "wsh"
+[1] "2024-05-13 12:03:43 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Sapovirus_temp_monthmax_0weeklag_C.RDS"
+[1] "wsh"
+[1] "2024-05-13 12:03:45 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Sapovirus_temp_monthmin_0weeklag_C.RDS"
+[1] "wsh"
+[1] "2024-05-13 12:03:47 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Sapovirus_temp_monthavg_0weeklag_C.RDS"
+[1] "wsh"
+[1] "2024-05-13 12:03:50 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Sapovirus_temp_monthmax_1weeklag_C.RDS"
+[1] "wsh"
+[1] "2024-05-13 12:03:52 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Sapovirus_temp_monthmin_1weeklag_C.RDS"
+[1] "wsh"
+[1] "2024-05-13 12:03:54 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Sapovirus_temp_monthavg_1weeklag_C.RDS"
+[1] "wsh"
+[1] "2024-05-13 12:03:56 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Sapovirus_temp_weekavg_0weeklag_C.RDS"
+[1] "wsh"
+[1] "2024-05-09 12:33:51 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Sapovirus_temp_weekavg_1weeklag_C.RDS"
+[1] "wsh"
+[1] "2024-05-09 12:33:54 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Sapovirus_temp_weekavg_2weeklag_C.RDS"
+[1] "wsh"
+[1] "2024-05-13 11:55:42 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Sapovirus_temp_weekavg_3weeklag_C.RDS"
+[1] "wsh"
+[1] "pos_Shigella_EIEC_"
+[1] "2024-05-13 12:04:01 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Shigella_EIEC_temp_weekmax_0weeklag_C.RDS"
+[1] "HHwealth_quart"
+[1] "2024-05-13 12:04:04 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Shigella_EIEC_temp_weekmax_1weeklag_C.RDS"
+[1] "HHwealth_quart"
+[1] "2024-05-13 12:04:06 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Shigella_EIEC_temp_weekmin_0weeklag_C.RDS"
+[1] "HHwealth_quart"
+[1] "2024-05-13 12:04:09 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Shigella_EIEC_temp_weekmin_1weeklag_C.RDS"
+[1] "HHwealth_quart"
+[1] "2024-05-13 12:04:11 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Shigella_EIEC_temp_monthmax_0weeklag_C.RDS"
+[1] "HHwealth_quart"
+[1] "2024-05-13 12:04:13 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Shigella_EIEC_temp_monthmin_0weeklag_C.RDS"
+[1] "HHwealth_quart"
+[1] "2024-05-13 12:04:16 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Shigella_EIEC_temp_monthavg_0weeklag_C.RDS"
+[1] "HHwealth_quart"
+[1] "2024-05-13 12:04:18 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Shigella_EIEC_temp_monthmax_1weeklag_C.RDS"
+[1] "HHwealth_quart"
+[1] "2024-05-13 12:04:20 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Shigella_EIEC_temp_monthmin_1weeklag_C.RDS"
+[1] "HHwealth_quart"
+[1] "2024-05-13 12:04:23 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Shigella_EIEC_temp_monthavg_1weeklag_C.RDS"
+[1] "HHwealth_quart"
+[1] "2024-05-13 12:04:29 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Shigella_EIEC_temp_weekavg_0weeklag_C.RDS"
+[1] "HHwealth_quart"
+[1] "2024-05-09 12:33:57 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Shigella_EIEC_temp_weekavg_1weeklag_C.RDS"
+[1] "HHwealth_quart"
+[1] "2024-05-09 12:33:59 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Shigella_EIEC_temp_weekavg_2weeklag_C.RDS"
+[1] "HHwealth_quart"
+[1] "2024-05-13 11:55:46 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Shigella_EIEC_temp_weekavg_3weeklag_C.RDS"
+[1] "HHwealth_quart"
+[1] "pos_STEC_"
+[1] "2024-05-13 12:04:34 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_STEC_temp_weekmax_0weeklag_C.RDS"
+[1] "abx_7d"
+abx_7d
+[1] "2024-05-13 12:04:35 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_STEC_temp_weekmax_1weeklag_C.RDS"
+[1] "abx_7d"
+abx_7d
+[1] "2024-05-13 12:04:37 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_STEC_temp_weekmin_0weeklag_C.RDS"
+[1] "abx_7d"
+abx_7d
+[1] "2024-05-13 12:04:39 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_STEC_temp_weekmin_1weeklag_C.RDS"
+[1] "abx_7d"
+abx_7d
+[1] "2024-05-13 12:04:41 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_STEC_temp_monthmax_0weeklag_C.RDS"
+[1] "abx_7d"
+abx_7d
+[1] "2024-05-13 12:04:43 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_STEC_temp_monthmin_0weeklag_C.RDS"
+[1] "abx_7d"
+abx_7d
+[1] "2024-05-13 12:04:47 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_STEC_temp_monthavg_0weeklag_C.RDS"
+[1] "abx_7d"
+abx_7d
+[1] "2024-05-13 12:04:48 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_STEC_temp_monthmax_1weeklag_C.RDS"
+[1] "abx_7d"
+abx_7d
+[1] "2024-05-13 12:04:50 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_STEC_temp_monthmin_1weeklag_C.RDS"
+[1] "abx_7d"
+abx_7d
+[1] "2024-05-13 12:04:52 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_STEC_temp_monthavg_1weeklag_C.RDS"
+[1] "abx_7d"
+abx_7d
+[1] "2024-05-13 12:04:54 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_STEC_temp_weekavg_0weeklag_C.RDS"
+[1] "abx_7d"
+abx_7d
+[1] "2024-05-09 12:34:01 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_STEC_temp_weekavg_1weeklag_C.RDS"
+[1] "abx_7d"
+abx_7d
+[1] "2024-05-09 12:34:03 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_STEC_temp_weekavg_2weeklag_C.RDS"
+[1] "abx_7d"
+abx_7d
+[1] "2024-05-13 11:55:57 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_STEC_temp_weekavg_3weeklag_C.RDS"
+[1] "abx_7d"
+abx_7d
+[1] "pos_virus_"
+[1] "2024-05-13 12:04:58 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_virus_temp_weekmax_0weeklag_C.RDS"
+[1] "wsh"       "nutrition"
+[1] "2024-05-13 12:05:00 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_virus_temp_weekmax_1weeklag_C.RDS"
+[1] "wsh"       "nutrition"
+[1] "2024-05-13 12:05:02 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_virus_temp_weekmin_0weeklag_C.RDS"
+[1] "wsh"       "nutrition"
+[1] "2024-05-13 12:05:06 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_virus_temp_weekmin_1weeklag_C.RDS"
+[1] "wsh"       "nutrition"
+[1] "2024-05-13 12:05:09 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_virus_temp_monthmax_0weeklag_C.RDS"
+[1] "wsh"       "nutrition"
+[1] "2024-05-13 12:05:11 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_virus_temp_monthmin_0weeklag_C.RDS"
+[1] "wsh"       "nutrition"
+[1] "2024-05-13 12:05:14 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_virus_temp_monthavg_0weeklag_C.RDS"
+[1] "wsh"       "nutrition"
+[1] "2024-05-13 12:05:16 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_virus_temp_monthmax_1weeklag_C.RDS"
+[1] "wsh"       "nutrition"
+[1] "2024-05-13 12:05:18 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_virus_temp_monthmin_1weeklag_C.RDS"
+[1] "wsh"       "nutrition"
+[1] "2024-05-13 12:05:20 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_virus_temp_monthavg_1weeklag_C.RDS"
+[1] "wsh"       "nutrition"
+[1] "2024-05-13 12:05:23 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_virus_temp_weekavg_0weeklag_C.RDS"
+[1] "wsh"       "nutrition"
+[1] "2024-05-09 12:34:06 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_virus_temp_weekavg_1weeklag_C.RDS"
+[1] "wsh"       "nutrition"
+[1] "2024-05-09 12:34:09 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_virus_temp_weekavg_2weeklag_C.RDS"
+[1] "wsh"       "nutrition"
+[1] "2024-05-13 11:56:07 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_virus_temp_weekavg_3weeklag_C.RDS"
+[1] "wsh"       "nutrition"
+> 
+> plot_pathogen_data <- plot_pathogen_list %>% bind_rows()
+> 
+> prep_for_plot <- function(data){
++   data %>% mutate(lag = case_when(
++     risk_factor == "temp_weekavg_0weeklag_C" ~ "0 week lag",
++     risk_factor == "temp_weekavg_1weeklag_C" ~ "1 week lag",
++     risk_factor == "temp_weekavg_2weeklag_C" ~ "2 week lag",
++     risk_factor == "temp_weekavg_3weeklag_C" ~ "3 week lag",
++     TRUE ~ "NA"
++   )) %>% 
++     mutate(measure = case_when(
++       grepl("min", risk_factor) ~ "Minimum",
++       grepl("max", risk_factor) ~ "Maximum",
++       grepl("avg", risk_factor) ~ "Mean",
++       TRUE ~ "NA"
++     )) %>% 
++     mutate(measure = factor(measure, levels = c("Minimum",
++                                                 "Mean",
++                                                 "Maximum"))) %>% 
++     mutate(period = case_when(
++       grepl("temp_month", risk_factor) ~ "30 days",
++       grepl("temp_week", risk_factor) ~ "7 days",
++       TRUE ~ "NA"
++     ))
++ }
+> 
+> plot_diar0_data <- prep_for_plot(plot_diar0_data)
+> plot_pathogen_data <- prep_for_plot(plot_pathogen_data)
+> 
+> pathogen_names <- list("pos_Aeromonas_" = expression(italic("Aeromonas")),
++                        "pos_B_fragilis_" = expression(italic("B. fragilis")),
++                        "pos_Campylobacter_" = expression(italic("Campylobacter")),
++                        "pos_C_difficile_" = expression(italic("C. difficile")),
++                        "pos_Plesiomonas_" = expression(italic("Plesiomonas")),
++                        "pos_Shigella_EIEC_" = expression(paste(italic("Shigella"), "/EIEC")),
++                        "pos_EAEC_" = "EAEC",
++                        "pos_EPEC_any_" = "EPEC",
++                        "pos_ETEC_any_" = "ETEC",
++                        # "pos_aEPEC_" = "aEPEC",
++                        # "pos_tEPEC_" = "tEPEC",
++                        # "pos_LT_ETEC_" = "LT-ETEC",
++                        # "pos_ST_ETEC_" = "ST-ETEC",
++                        "pos_STEC_" = "STEC",
++                        "pos_Cryptosporidium_" = expression(italic("Cryptosporidium")),
++                        "pos_E_bieneusi_" = expression(italic("E. bieneusi")),
++                        "pos_Giardia_" = expression(italic("Giardia")),
++                        "pos_parasite_" = "Any parasite",
++                        "pos_Adenovirus40_41_" = "Adenovirus 40/41",
++                        "pos_Norovirus_" = "Norovirus",
++                        "pos_Sapovirus_" = "Sapovirus",
++                        "pos_virus_" = "Any virus")
+> 
+> pathogen_labeller <- function(variable, value){
++   return(pathogen_names[value])
++ }
+> 
+> outcome_order <- c("pos_Aeromonas_",
++                    "pos_B_fragilis_",
++                    "pos_Campylobacter_",
++                    "pos_C_difficile_",
++                    "pos_Plesiomonas_",
++                    "pos_Shigella_EIEC_",
++                    "pos_EAEC_",
++                    "pos_EPEC_any_",
++                    "pos_ETEC_any_",
++                    # "pos_aEPEC_",
++                    # "pos_tEPEC_",
++                    # "pos_LT_ETEC_",
++                    # "pos_ST_ETEC_",
++                    "pos_STEC_",
++                    "pos_Cryptosporidium_",
++                    "pos_E_bieneusi_",
++                    "pos_Giardia_",
++                    "pos_parasite_",
++                    "pos_Adenovirus40_41_",
++                    "pos_Norovirus_",
++                    "pos_Sapovirus_",
++                    "pos_virus_")
+>   
+> plot_pathogen_data <- plot_pathogen_data %>% mutate(outcome = factor(outcome, levels = outcome_order))
+> 
+> #------------------------------------------------------
+> ## Fig S2
+> ## Make plot of weekly average temperature with different lags
+> ### Pathogens
+> #------------------------------------------------------
+> plot_weekly_avg_path <-
++   ggplot(plot_pathogen_data %>% filter(risk_factor %in% c("temp_weekavg_0weeklag_C",
++                                                           "temp_weekavg_1weeklag_C",
++                                                           "temp_weekavg_2weeklag_C",
++                                                           "temp_weekavg_3weeklag_C")) , 
++        aes(x = risk_factor_value, y = fit)) + 
++   geom_ribbon(aes(ymin = lwrS, ymax= uprS, fill = lag), alpha =0.5) +
++   geom_line(aes(col = lag))  +
++   facet_wrap(~ outcome, labeller = pathogen_labeller, ncol = 3) +
++   ylab("Prevalence (%)") +
++   xlab("Weekly average temperature (C)") +
++   scale_colour_brewer(palette = "OrRd") +
++   scale_fill_brewer(palette = "OrRd") +
++   theme_bw() +
++   theme(
++     legend.position = "bottom",
++     legend.title = element_blank()
++   ) 
+Warning message:
+The `labeller` API has been updated. Labellers taking `variable` and `value`
+arguments are now deprecated.
+ℹ See labellers documentation. 
+> 
+> plot_weekly_avg_path
+> 
+> ggsave(plot_weekly_avg_path,
++        filename = paste0(fig_dir, "S2-plot-gam-temp-weeklyavg-pathogens.tiff"),
++        width = 8, height = 9)
+> 
+> #------------------------------------------------------
+> ## Fig S3
+> ## Make plot of min, max, mean temp within 7 and 30 days
+> ### Diarrhea control arm
+> #------------------------------------------------------
+> plot_temp_other_diar <- ggplot(plot_diar0_data %>% 
++                                  filter(grepl("1weeklag", risk_factor)), 
++                                aes(x = risk_factor_value, y = fit)) + 
++   geom_ribbon(aes(ymin = lwrS, ymax= uprS, fill = period), alpha =0.5) +
++   geom_line(aes(col=period), linewidth=0.8)  +
++   facet_wrap(.~measure, nrow = 3) +
++   ylab("Diarrhea Prevalence (%)") +
++   xlab("Temperature (C)") +
++   scale_colour_brewer("Period", palette = "Accent") +
++   scale_fill_brewer("Period", palette = "Accent") +
++   theme_bw() +
++   theme(
++     legend.position = "bottom"
++   ) 
+> 
+> plot_temp_other_diar
+> 
+> ggsave(plot_temp_other_diar, 
++        filename = paste0(fig_dir, "S3-plot-gam-temp-measures-diar.tiff"),
++        width = 4, height = 5.5)
+> 
+> 
+> #------------------------------------------------------
+> ## Fig S4
+> ## Make plot of min temp within 7 and 30 days
+> ### Pathogens
+> #------------------------------------------------------
+> plot_temp_min_path <- ggplot(plot_pathogen_data %>% 
++                  filter(risk_factor %in% c("temp_monthmin_0weeklag_C",
++                                            "temp_weekmin_0weeklag_C")),
++                                aes(x = risk_factor_value, y = fit)) + 
++   geom_ribbon(aes(ymin = lwrS, ymax= uprS, fill = period), alpha =0.5) +
++   geom_line(aes(col=period), size=0.8)  +
++   facet_wrap(~ outcome, labeller = pathogen_labeller, ncol = 3) +
++   ylab("Prevalence (%)") +
++   xlab("Temperature (C)") +
++   scale_colour_brewer("Period", palette = "Accent") +
++   scale_fill_brewer("Period", palette = "Accent") +
++   theme_bw() +
++   theme(
++     legend.position = "bottom")
+Warning messages:
+1: Using `size` aesthetic for lines was deprecated in ggplot2 3.4.0.
+ℹ Please use `linewidth` instead. 
+2: The `labeller` API has been updated. Labellers taking `variable` and `value`
+arguments are now deprecated.
+ℹ See labellers documentation. 
+> 
+> plot_temp_min_path
+> 
+> ggsave(plot_temp_min_path, 
++        filename = paste0(fig_dir, "S4-plot-gam-temp-min-pathogens.tiff"),
++        width = 8, height = 9)
+> 
+> #------------------------------------------------------
+> ## Fig S5
+> ## Make plot of max temp within 7 and 30 days
+> ### Pathogens
+> #------------------------------------------------------
+> plot_temp_max_path <- ggplot(plot_pathogen_data %>% 
++                                 filter(risk_factor %in% c("temp_weekmax_0weeklag_C",
++                                                           "temp_monthmax_0weeklag_C")), 
++                               aes(x = risk_factor_value, y = fit)) + 
++   geom_ribbon(aes(ymin = lwrS, ymax= uprS, fill = period), alpha =0.5) +
++   geom_line(aes(col=period), size=0.8)  +
++   facet_wrap(~ outcome, labeller = pathogen_labeller, ncol = 3) +
++   ylab("Prevalence (%)") +
++   xlab("Temperature (C)") +
++   scale_colour_brewer("Period", palette = "Accent") +
++   scale_fill_brewer("Period", palette = "Accent") +
++   theme_bw() +
++   theme(
++     legend.position = "bottom"
++   ) 
+Warning message:
+The `labeller` API has been updated. Labellers taking `variable` and `value`
+arguments are now deprecated.
+ℹ See labellers documentation. 
+> 
+> plot_temp_max_path
+> 
+> ggsave(plot_temp_max_path, 
++        filename = paste0(fig_dir, "S5-plot-gam-temp-max-pathogens.tiff"),
++        width = 8, height = 9)
+> 
+> #--------------------------------------
+> # Capture session info
+> #--------------------------------------
+> sessionInfo()
+R version 4.2.0 (2022-04-22)
+Platform: x86_64-apple-darwin17.0 (64-bit)
+Running under: macOS Big Sur/Monterey 10.16
+
+Matrix products: default
+BLAS:   /Library/Frameworks/R.framework/Versions/4.2/Resources/lib/libRblas.0.dylib
+LAPACK: /Library/Frameworks/R.framework/Versions/4.2/Resources/lib/libRlapack.dylib
+
+locale:
+[1] en_US.UTF-8/en_US.UTF-8/en_US.UTF-8/C/en_US.UTF-8/en_US.UTF-8
+
+attached base packages:
+[1] parallel  grid      stats     graphics  grDevices utils     datasets 
+[8] methods   base     
+
+other attached packages:
+ [1] cowplot_1.1.1      MetBrewer_0.2.0    RColorBrewer_1.1-3 rcartocolor_2.0.0 
+ [5] broom_1.0.5        magrittr_2.0.3     doRNG_1.8.2        rngtools_1.5.2    
+ [9] doParallel_1.0.17  iterators_1.0.14   foreach_1.5.2      tictoc_1.1        
+[13] rmarkdown_2.25     kableExtra_1.3.4   forcats_0.5.2      readr_2.1.3       
+[17] tibble_3.2.1       tidyverse_1.3.2    pgirmess_2.0.0     wrapr_2.0.9       
+[21] caret_6.0-93       lattice_0.20-45    viridis_0.6.4      viridisLite_0.4.2 
+[25] purrr_1.0.2        DHARMa_0.4.6       gamm4_0.2-6        lme4_1.1-35.1     
+[29] Matrix_1.6-4       mgcv_1.8-40        nlme_3.1-160       assertthat_0.2.1  
+[33] boxr_0.3.6         ncdf4_1.19         stringr_1.5.1      lubridate_1.8.0   
+[37] washb_0.2.2        gridExtra_2.3      reshape2_1.4.4     tidyr_1.3.0       
+[41] ggcorrplot_0.1.4   ggplot2_3.4.4      dplyr_1.1.4        here_1.0.1        
+
+loaded via a namespace (and not attached):
+ [1] readxl_1.4.3         backports_1.4.1      systemfonts_1.0.4   
+ [4] plyr_1.8.9           sp_1.5-0             splines_4.2.0       
+ [7] listenv_0.8.0        digest_0.6.33        htmltools_0.5.7     
+[10] fansi_1.0.6          googlesheets4_1.0.1  tzdb_0.3.0          
+[13] recipes_1.0.2        globals_0.16.1       modelr_0.1.9        
+[16] gower_1.0.0          svglite_2.1.0        hardhat_1.2.0       
+[19] colorspace_2.1-0     rvest_1.0.3          textshaping_0.3.6   
+[22] haven_2.5.1          xfun_0.41            crayon_1.5.2        
+[25] jsonlite_1.8.8       survival_3.4-0       glue_1.6.2          
+[28] gtable_0.3.4         gargle_1.2.1         ipred_0.9-13        
+[31] webshot_0.5.4        future.apply_1.9.1   scales_1.3.0        
+[34] DBI_1.1.3            Rcpp_1.0.11          spData_2.2.0        
+[37] units_0.8-0          spdep_1.2-7          proxy_0.4-27        
+[40] stats4_4.2.0         lava_1.6.10          prodlim_2019.11.13  
+[43] httr_1.4.7           wk_0.7.0             farver_2.1.1        
+[46] pkgconfig_2.0.3      nnet_7.3-18          dbplyr_2.2.1        
+[49] deldir_1.0-6         utf8_1.2.4           labeling_0.4.3      
+[52] tidyselect_1.2.0     rlang_1.1.2          munsell_0.5.0       
+[55] cellranger_1.1.0     tools_4.2.0          cli_3.6.2           
+[58] generics_0.1.3       evaluate_0.23        fastmap_1.1.1       
+[61] ragg_1.2.3           ModelMetrics_1.2.2.2 knitr_1.45.8        
+[64] fs_1.6.3             s2_1.1.0             future_1.28.0       
+[67] xml2_1.3.3           compiler_4.2.0       rstudioapi_0.14     
+[70] e1071_1.7-11         reprex_2.0.2         stringi_1.8.2       
+[73] classInt_0.4-8       nloptr_2.0.3         vctrs_0.6.5         
+[76] pillar_1.9.0         lifecycle_1.0.4      data.table_1.14.10  
+[79] R6_2.5.1             KernSmooth_2.23-20   parallelly_1.32.1   
+[82] codetools_0.2-18     boot_1.3-28          MASS_7.3-58.1       
+[85] rprojroot_2.0.4      withr_2.5.2          hms_1.1.3           
+[88] rpart_4.1.16         timeDate_4021.106    class_7.3-20        
+[91] minqa_1.2.6          googledrive_2.0.0    sf_1.0-12           
+[94] pROC_1.18.0         
+> 
+> proc.time()
+   user  system elapsed 
+314.825  30.594 347.379 

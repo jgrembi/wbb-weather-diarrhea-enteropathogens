@@ -1,0 +1,804 @@
+
+R version 4.2.0 (2022-04-22) -- "Vigorous Calisthenics"
+Copyright (C) 2022 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin17.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> #######################################
+> # WASH Benefits Bangladesh  
+> # Hydrometeorological risk factors for diarrhea and enteropathogens
+> 
+> # Script to plot temperature - weekly average 3 week lag 
+> # Diarrhea, control arm 
+> # and pathogen outcomes 
+> # unadjusted models
+> #######################################
+> rm(list=ls())
+> source(paste0(here::here(), "/0-config.R"))
+here() starts at /Users/JGrembi/Dropbox/08_JadeCollaboration/wbb-weather-diarrhea-enteropathogens
+
+Attaching package: ‘dplyr’
+
+The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+Loading required package: ggplot2
+
+Attaching package: ‘reshape2’
+
+The following object is masked from ‘package:tidyr’:
+
+    smiths
+
+
+Attaching package: ‘gridExtra’
+
+The following object is masked from ‘package:dplyr’:
+
+    combine
+
+Welcome to the washb package
+Version: 0.2.2
+Created on 2018-11-07
+
+This software was developed with funding from the
+Bill & Melinda Gates Foundation (grant number OPPGD759).
+
+The package's reference manual and vignette are also online:
+https://ben-arnold.github.io/washb
+
+
+Attaching package: ‘lubridate’
+
+The following objects are masked from ‘package:base’:
+
+    date, intersect, setdiff, union
+
+Loading required package: nlme
+
+Attaching package: ‘nlme’
+
+The following object is masked from ‘package:dplyr’:
+
+    collapse
+
+This is mgcv 1.8-40. For overview type 'help("mgcv-package")'.
+Loading required package: Matrix
+
+Attaching package: ‘Matrix’
+
+The following objects are masked from ‘package:tidyr’:
+
+    expand, pack, unpack
+
+Loading required package: lme4
+
+Attaching package: ‘lme4’
+
+The following object is masked from ‘package:nlme’:
+
+    lmList
+
+This is gamm4 0.2-6
+
+This is DHARMa 0.4.6. For overview type '?DHARMa'. For recent changes, type news(package = 'DHARMa')
+Loading required package: viridisLite
+Loading required package: lattice
+
+Attaching package: ‘caret’
+
+The following object is masked from ‘package:purrr’:
+
+    lift
+
+
+Attaching package: ‘wrapr’
+
+The following objects are masked from ‘package:Matrix’:
+
+    pack, unpack
+
+The following object is masked from ‘package:mgcv’:
+
+    %.%
+
+The following objects are masked from ‘package:tidyr’:
+
+    pack, unpack
+
+The following object is masked from ‘package:dplyr’:
+
+    coalesce
+
+── Attaching packages ─────────────────────────────────────── tidyverse 1.3.2 ──
+✔ tibble  3.2.1     ✔ forcats 0.5.2
+✔ readr   2.1.3     
+── Conflicts ────────────────────────────────────────── tidyverse_conflicts() ──
+✖ lubridate::as.difftime() masks base::as.difftime()
+✖ wrapr::coalesce()        masks dplyr::coalesce()
+✖ nlme::collapse()         masks dplyr::collapse()
+✖ gridExtra::combine()     masks dplyr::combine()
+✖ lubridate::date()        masks base::date()
+✖ Matrix::expand()         masks tidyr::expand()
+✖ dplyr::filter()          masks stats::filter()
+✖ tibble::has_name()       masks assertthat::has_name()
+✖ lubridate::intersect()   masks base::intersect()
+✖ dplyr::lag()             masks stats::lag()
+✖ caret::lift()            masks purrr::lift()
+✖ wrapr::pack()            masks Matrix::pack(), tidyr::pack()
+✖ lubridate::setdiff()     masks base::setdiff()
+✖ lubridate::union()       masks base::union()
+✖ wrapr::unpack()          masks Matrix::unpack(), tidyr::unpack()
+✖ tibble::view()           masks wrapr::view()
+
+Attaching package: ‘kableExtra’
+
+The following object is masked from ‘package:dplyr’:
+
+    group_rows
+
+Loading required package: foreach
+
+Attaching package: ‘foreach’
+
+The following objects are masked from ‘package:purrr’:
+
+    accumulate, when
+
+Loading required package: iterators
+Loading required package: parallel
+Loading required package: rngtools
+
+Attaching package: ‘magrittr’
+
+The following object is masked from ‘package:purrr’:
+
+    set_names
+
+The following object is masked from ‘package:tidyr’:
+
+    extract
+
+
+Attaching package: ‘cowplot’
+
+The following object is masked from ‘package:lubridate’:
+
+    stamp
+
+> source(paste0(here::here(), "/0-utils/1-plot-functions.R"))
+> 
+> 
+> # define results path in Box 
+> diar0_results_dir <- paste0(offset_results_path, "gam_outputs/diarrhea-adjusted-0/")
+> pathogen_results_dir <- paste0(offset_results_path, "gam_outputs/pathogens-adjusted/")
+> # define list of temperature variable names
+> temp_vars <- list("temp_weekavg_1weeklag_C",
++                   "temp_weekavg_2weeklag_C",
++                   "temp_weekavg_3weeklag_C")
+> 
+> #------------------------------------------------------
+> ## Preprocess data for plotting 
+> #------------------------------------------------------
+> set.seed(22242)
+> plot_diar0_list <- lapply(temp_vars, function(x) 
++   prep_gam_plot(results_directory = diar0_results_dir, 
++                      yname = "diar7d_0_", 
++                      risk_factor = x) %>%
++     select(risk_factor: risk_factor_value,fit:lwrS)) 
+[1] "2024-05-09 12:28:45 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/diarrhea-adjusted-0/gam_diar7d_0_temp_weekavg_1weeklag_C.RDS"
+[1] "aged_C"         "HHwealth_quart"
+[1] "2024-05-09 12:32:06 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/diarrhea-adjusted-0/gam_diar7d_0_temp_weekavg_2weeklag_C.RDS"
+[1] "aged_C"         "HHwealth_quart"
+[1] "2024-05-13 11:54:22 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/diarrhea-adjusted-0/gam_diar7d_0_temp_weekavg_3weeklag_C.RDS"
+[1] "aged_C"         "HHwealth_quart"
+> 
+> plot_diar0_data <- plot_diar0_list %>% bind_rows() %>% 
++   mutate(outcome = "Diarrhea")
+> 
+> path_outcomes <- c(
++   "pos_Adenovirus40_41_",
++   "pos_aEPEC_",
++   "pos_Aeromonas_",
++   "pos_B_fragilis_",
++   "pos_C_difficile_",
++   "pos_Campylobacter_",
++   "pos_Cryptosporidium_",
++   "pos_E_bieneusi_",
++   "pos_EAEC_",
++   "pos_ETEC_any_",
++   "pos_EPEC_any_",
++   "pos_Giardia_",
++   "pos_LT_ETEC_",
++   "pos_Norovirus_",
++   "pos_parasite_",
++   "pos_Plesiomonas_",
++   "pos_Sapovirus_",
++   "pos_Shigella_EIEC_",
++   "pos_ST_ETEC_",
++   "pos_STEC_",
++   "pos_tEPEC_",
++   "pos_virus_"
++ )
+> 
+> plot_pathogen_list <- list()
+> set.seed(22242)
+> for(i in 1:length(path_outcomes)){
++   plot_pathogen_y_list <- lapply(temp_vars, function(x) 
++     prep_gam_plot(results_directory = pathogen_results_dir, 
++                     yname = path_outcomes[i], 
++                     risk_factor = x) %>%
++       select(risk_factor: risk_factor_value,fit:lwrS)) 
++   plot_pathogen_list[[i]] <- plot_pathogen_y_list %>% bind_rows() %>% 
++     mutate(outcome = path_outcomes[i])
++ }
+[1] "2024-05-09 12:32:26 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Adenovirus40_41_temp_weekavg_1weeklag_C.RDS"
+[1] "wsh" "sex"
+sex
+[1] "2024-05-09 12:32:44 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Adenovirus40_41_temp_weekavg_2weeklag_C.RDS"
+[1] "wsh" "sex"
+sex
+[1] "2024-05-13 11:54:29 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Adenovirus40_41_temp_weekavg_3weeklag_C.RDS"
+[1] "wsh" "sex"
+sex
+[1] "2024-05-13 11:54:31 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_aEPEC_temp_weekavg_1weeklag_C.RDS"
+[1] "abx_7d"         "aged_C"         "HHwealth_quart"
+abx_7d
+[1] "2024-05-13 11:54:34 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_aEPEC_temp_weekavg_2weeklag_C.RDS"
+[1] "abx_7d"         "aged_C"         "HHwealth_quart"
+abx_7d
+[1] "2024-05-13 11:54:37 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_aEPEC_temp_weekavg_3weeklag_C.RDS"
+[1] "abx_7d"         "aged_C"         "HHwealth_quart"
+abx_7d
+[1] "2024-05-09 12:32:47 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Aeromonas_temp_weekavg_1weeklag_C.RDS"
+[1] "aged_C" "abx_7d"
+abx_7d
+[1] "2024-05-09 12:32:50 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Aeromonas_temp_weekavg_2weeklag_C.RDS"
+[1] "aged_C" "abx_7d"
+abx_7d
+[1] "2024-05-13 11:54:41 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Aeromonas_temp_weekavg_3weeklag_C.RDS"
+[1] "aged_C" "abx_7d"
+abx_7d
+[1] "2024-05-09 12:32:53 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_B_fragilis_temp_weekavg_1weeklag_C.RDS"
+[1] "wsh"       "nutrition"
+[1] "2024-05-09 12:32:55 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_B_fragilis_temp_weekavg_2weeklag_C.RDS"
+[1] "wsh"       "nutrition"
+[1] "2024-05-13 11:54:45 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_B_fragilis_temp_weekavg_3weeklag_C.RDS"
+[1] "wsh"       "nutrition"
+[1] "2024-05-09 12:32:57 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_C_difficile_temp_weekavg_1weeklag_C.RDS"
+[1] "HHwealth_quart"
+[1] "2024-05-09 12:33:00 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_C_difficile_temp_weekavg_2weeklag_C.RDS"
+[1] "HHwealth_quart"
+[1] "2024-05-13 11:54:49 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_C_difficile_temp_weekavg_3weeklag_C.RDS"
+[1] "HHwealth_quart"
+[1] "2024-05-09 12:33:02 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Campylobacter_temp_weekavg_1weeklag_C.RDS"
+[1] "abx_7d"         "aged_C"         "HHwealth_quart"
+abx_7d
+[1] "2024-05-09 12:33:05 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Campylobacter_temp_weekavg_2weeklag_C.RDS"
+[1] "abx_7d"         "aged_C"         "HHwealth_quart"
+abx_7d
+[1] "2024-05-13 11:54:57 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Campylobacter_temp_weekavg_3weeklag_C.RDS"
+[1] "abx_7d"         "aged_C"         "HHwealth_quart"
+abx_7d
+[1] "2024-05-09 12:33:07 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Cryptosporidium_temp_weekavg_1weeklag_C.RDS"
+[1] "aged_C" "wsh"   
+[1] "2024-05-09 12:33:09 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Cryptosporidium_temp_weekavg_2weeklag_C.RDS"
+[1] "aged_C" "wsh"   
+[1] "2024-05-13 11:55:01 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Cryptosporidium_temp_weekavg_3weeklag_C.RDS"
+[1] "aged_C" "wsh"   
+[1] "2024-05-09 12:33:12 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_E_bieneusi_temp_weekavg_1weeklag_C.RDS"
+[1] "HHwealth_quart" "aged_C"        
+[1] "2024-05-09 12:33:14 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_E_bieneusi_temp_weekavg_2weeklag_C.RDS"
+[1] "HHwealth_quart" "aged_C"        
+[1] "2024-05-13 11:55:04 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_E_bieneusi_temp_weekavg_3weeklag_C.RDS"
+[1] "HHwealth_quart" "aged_C"        
+[1] "2024-05-09 12:33:16 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_EAEC_temp_weekavg_1weeklag_C.RDS"
+[1] "aged_C" "wsh"   
+[1] "2024-05-09 12:33:18 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_EAEC_temp_weekavg_2weeklag_C.RDS"
+[1] "aged_C" "wsh"   
+[1] "2024-05-13 11:55:07 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_EAEC_temp_weekavg_3weeklag_C.RDS"
+[1] "aged_C" "wsh"   
+[1] "2024-05-09 12:33:26 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_ETEC_any_temp_weekavg_1weeklag_C.RDS"
+[1] "HHwealth_quart" "abx_7d"         "aged_C"        
+abx_7d
+[1] "2024-05-09 12:33:28 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_ETEC_any_temp_weekavg_2weeklag_C.RDS"
+[1] "HHwealth_quart" "abx_7d"         "aged_C"        
+abx_7d
+[1] "2024-05-13 11:55:11 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_ETEC_any_temp_weekavg_3weeklag_C.RDS"
+[1] "HHwealth_quart" "abx_7d"         "aged_C"        
+abx_7d
+[1] "2024-05-09 12:33:20 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_EPEC_any_temp_weekavg_1weeklag_C.RDS"
+[1] "abx_7d" "aged_C"
+abx_7d
+[1] "2024-05-09 12:33:23 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_EPEC_any_temp_weekavg_2weeklag_C.RDS"
+[1] "abx_7d" "aged_C"
+abx_7d
+[1] "2024-05-13 11:55:15 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_EPEC_any_temp_weekavg_3weeklag_C.RDS"
+[1] "abx_7d" "aged_C"
+abx_7d
+[1] "2024-05-09 12:33:31 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Giardia_temp_weekavg_1weeklag_C.RDS"
+[1] "HHwealth_quart" "aged_C"        
+[1] "2024-05-09 12:33:33 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Giardia_temp_weekavg_2weeklag_C.RDS"
+[1] "HHwealth_quart" "aged_C"        
+[1] "2024-05-13 11:55:19 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Giardia_temp_weekavg_3weeklag_C.RDS"
+[1] "HHwealth_quart" "aged_C"        
+[1] "2024-05-13 11:55:21 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_LT_ETEC_temp_weekavg_1weeklag_C.RDS"
+[1] "HHwealth_quart"
+[1] "2024-05-13 11:55:24 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_LT_ETEC_temp_weekavg_2weeklag_C.RDS"
+[1] "HHwealth_quart"
+[1] "2024-05-13 11:55:26 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_LT_ETEC_temp_weekavg_3weeklag_C.RDS"
+[1] "HHwealth_quart"
+[1] "2024-05-09 12:33:36 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Norovirus_temp_weekavg_1weeklag_C.RDS"
+[1] "wsh"            "HHwealth_quart"
+[1] "2024-05-09 12:33:38 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Norovirus_temp_weekavg_2weeklag_C.RDS"
+[1] "wsh"            "HHwealth_quart"
+[1] "2024-05-13 11:55:30 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Norovirus_temp_weekavg_3weeklag_C.RDS"
+[1] "wsh"            "HHwealth_quart"
+[1] "2024-05-09 12:33:41 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_parasite_temp_weekavg_1weeklag_C.RDS"
+[1] "HHwealth_quart"
+[1] "2024-05-09 12:33:43 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_parasite_temp_weekavg_2weeklag_C.RDS"
+[1] "HHwealth_quart"
+[1] "2024-05-13 11:55:34 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_parasite_temp_weekavg_3weeklag_C.RDS"
+[1] "HHwealth_quart"
+[1] "2024-05-09 12:33:46 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Plesiomonas_temp_weekavg_1weeklag_C.RDS"
+[1] "aged_C"         "abx_7d"         "HHwealth_quart"
+abx_7d
+[1] "2024-05-09 12:33:48 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Plesiomonas_temp_weekavg_2weeklag_C.RDS"
+[1] "aged_C"         "abx_7d"         "HHwealth_quart"
+abx_7d
+[1] "2024-05-13 11:55:38 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Plesiomonas_temp_weekavg_3weeklag_C.RDS"
+[1] "aged_C"         "abx_7d"         "HHwealth_quart"
+abx_7d
+[1] "2024-05-09 12:33:51 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Sapovirus_temp_weekavg_1weeklag_C.RDS"
+[1] "wsh"
+[1] "2024-05-09 12:33:54 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Sapovirus_temp_weekavg_2weeklag_C.RDS"
+[1] "wsh"
+[1] "2024-05-13 11:55:42 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Sapovirus_temp_weekavg_3weeklag_C.RDS"
+[1] "wsh"
+[1] "2024-05-09 12:33:57 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Shigella_EIEC_temp_weekavg_1weeklag_C.RDS"
+[1] "HHwealth_quart"
+[1] "2024-05-09 12:33:59 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Shigella_EIEC_temp_weekavg_2weeklag_C.RDS"
+[1] "HHwealth_quart"
+[1] "2024-05-13 11:55:46 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_Shigella_EIEC_temp_weekavg_3weeklag_C.RDS"
+[1] "HHwealth_quart"
+[1] "2024-05-13 11:55:48 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_ST_ETEC_temp_weekavg_1weeklag_C.RDS"
+[1] "HHwealth_quart" "wsh"           
+[1] "2024-05-13 11:55:51 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_ST_ETEC_temp_weekavg_2weeklag_C.RDS"
+[1] "HHwealth_quart" "wsh"           
+[1] "2024-05-13 11:55:53 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_ST_ETEC_temp_weekavg_3weeklag_C.RDS"
+[1] "HHwealth_quart" "wsh"           
+[1] "2024-05-09 12:34:01 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_STEC_temp_weekavg_1weeklag_C.RDS"
+[1] "abx_7d"
+abx_7d
+[1] "2024-05-09 12:34:03 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_STEC_temp_weekavg_2weeklag_C.RDS"
+[1] "abx_7d"
+abx_7d
+[1] "2024-05-13 11:55:57 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_STEC_temp_weekavg_3weeklag_C.RDS"
+[1] "abx_7d"
+abx_7d
+[1] "2024-05-13 11:55:58 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_tEPEC_temp_weekavg_1weeklag_C.RDS"
+[1] "sex"            "HHwealth_quart" "abx_7d"        
+sex
+abx_7d
+[1] "2024-05-13 11:56:01 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_tEPEC_temp_weekavg_2weeklag_C.RDS"
+[1] "sex"            "HHwealth_quart" "abx_7d"        
+sex
+abx_7d
+[1] "2024-05-13 11:56:03 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_tEPEC_temp_weekavg_3weeklag_C.RDS"
+[1] "sex"            "HHwealth_quart" "abx_7d"        
+sex
+abx_7d
+[1] "2024-05-09 12:34:06 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_virus_temp_weekavg_1weeklag_C.RDS"
+[1] "wsh"       "nutrition"
+[1] "2024-05-09 12:34:09 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_virus_temp_weekavg_2weeklag_C.RDS"
+[1] "wsh"       "nutrition"
+[1] "2024-05-13 11:56:07 PDT"
+[1] "Opening: /Users/JGrembi/Library/CloudStorage/Box-Box/WBB-mapping-Stanford/results/gam_outputs/pathogens-adjusted/gam_pos_virus_temp_weekavg_3weeklag_C.RDS"
+[1] "wsh"       "nutrition"
+> 
+> plot_pathogen_data <- plot_pathogen_list %>% bind_rows()
+> 
+> # make plot -------------------------------------------
+> plot_data <- bind_rows(plot_diar0_data, plot_pathogen_data) %>%
++ # plot_data <- plot_diar0_data %>%
++   mutate(outcome_clean = clean_pathogen_names(outcome)) %>%
++   add_pathogen_category("outcome") %>% 
++   mutate(pathogen_category = ifelse(outcome=="Diarrhea", "N/A", pathogen_category)) %>% 
++   mutate(outcome_cat = case_when(
++     outcome=="Diarrhea" ~ "Diarrhea",
++     pathogen_category == "Bacteria" ~ "Bacteria",
++     pathogen_category == "Parasite" ~ "Parasite",
++     pathogen_category == "Virus" ~ "Virus"
++   )) %>% 
++   mutate(outcome_cat = factor(outcome_cat, levels = c("Diarrhea","Bacteria","Parasite","Virus"))) %>% 
++   mutate(outcome_clean = clean_pathogen_names(outcome)) %>% 
++   mutate(outcome_clean = factor(outcome_clean, levels = c(
++     "aEPEC", "Aeromonas", "B. fragilis", "Campylobacter", "C. difficile", "Plesiomonas", 
++     "E. bieneusi" , "EAEC","ETEC", "EPEC", "LT-ETEC" ,  "Shigella/EIEC",  "STEC",  "ST-ETEC" , "tEPEC",          
++     "Adenovirus 40/41", "Norovirus", "Sapovirus","Any virus",
++     "Cryptosporidium" , "Giardia"  , "Any parasite", 
++     "Diarrhea"
++   )))
+> 
+> 
+> # subset lag based on incubation period -------------------------------------------
+> plotdata_subset <- plot_data %>% 
++   mutate(lag = case_when(
++     risk_factor == "temp_weekavg_1weeklag_C" ~ "1 week",
++     risk_factor == "temp_weekavg_2weeklag_C" ~ "2 weeks",
++     risk_factor == "temp_weekavg_3weeklag_C" ~ "3 weeks")) %>% 
++   mutate(keep_lag = case_when(
++     outcome_clean == "Adenovirus 40/41" ~ "1 week",
++     outcome_clean == "aEPEC" ~ "1 week",
++     outcome_clean == "Aeromonas" ~ "1 week",
++     outcome_clean == "Any parasite" ~ "2 weeks",
++     outcome_clean == "Any virus" ~ "1 week",
++     outcome_clean == "B. fragilis" ~ "2 weeks",
++     outcome_clean == "C. difficile" ~ "1 week",
++     outcome_clean == "Campylobacter" ~ "1 week",
++     outcome_clean == "Cryptosporidium" ~ "2 weeks",
++     outcome_clean == "Diarrhea" ~ lag,
++     outcome_clean == "E. bieneusi" ~ "2 weeks",
++     outcome_clean == "EAEC" ~ "1 week",
++     outcome_clean == "Giardia" ~ "3 weeks",
++     outcome_clean == "LT-ETEC" ~ "1 week",
++     outcome_clean == "Norovirus" ~ "1 week",
++     outcome_clean == "Plesiomonas" ~ "1 week",
++     outcome_clean == "Sapovirus" ~ "1 week",
++     outcome_clean == "Shigella/EIEC" ~ "1 week",
++     outcome_clean == "ST-ETEC" ~ "1 week",
++     outcome_clean == "STEC" ~ "1 week",
++     outcome_clean == "tEPEC" ~ "1 week",
++     outcome_clean == "EPEC" ~ "1 week",
++     outcome_clean == "ETEC" ~ "1 week")) %>% 
++   filter(lag == keep_lag)
+> 
+> 
+> drop_ecoli <- c("LT-ETEC", "ST-ETEC", "aEPEC", "tEPEC")
+> 
+> diar_data <- plotdata_subset %>% filter(outcome_cat == "Diarrhea")
+> bacteria_data <- plotdata_subset %>% filter(outcome_cat == "Bacteria",!outcome_clean %in% drop_ecoli)
+> parasite_data <- plotdata_subset %>% filter(outcome_cat == "Parasite")
+> virus_data <- plotdata_subset %>% filter(outcome_cat == "Virus")
+> 
+> #------------------------------------------------------
+> ## Make plot of weekly average temperature with different outcomes
+> #------------------------------------------------------
+> diarrhea_palette = c("#bdd7e7","#6baed6","#084594")
+> (diar_plot <- ggplot(diar_data,  
++        aes(x = risk_factor_value, y = fit, group=lag)) + 
++   geom_ribbon(aes(ymin = lwrS, ymax= uprS, fill=lag), alpha = 0.6) +
++     scale_color_manual(values = diarrhea_palette) +
++     scale_fill_manual(values = diarrhea_palette) +
++     # scale_fill_brewer("Lag period", palette = "Blues") +
++   scale_x_continuous(labels = c(15, 20, 25, 30),
++                      breaks = c(15, 20, 25, 30)) +
++   geom_line(col="black")  +
++   ylab("Prevalence (%)") +
++   xlab("Weekly average temperature (C)") +
++     labs(fill = "Lag period") +
++   facet_wrap(~lag, ncol=1)+
++   theme_bw() +
++   theme(
++     legend.position = "bottom",
++     legend.key.size = unit(1/10, "in"),
++     legend.key.height= unit(1/10, 'in'),
++     legend.key.width= unit(1/10, 'in'),
++     legend.title = element_text(size=8),
++     legend.text = element_text(size=8),
++     axis.text = element_text(size = 6),
++     axis.title = element_text(size = 8),
++     plot.title = element_text(size= 10),
++     strip.background = element_blank(),
++     strip.text.x = element_blank()
++   ) + 
++   ggtitle("A) Diarrhea"))
+> 
+> 
+> bacteria_data = bacteria_data %>% 
++   mutate(pattern = factor(ifelse(outcome_clean %in% c("STEC", "ETEC"), "A_pattern", "B_no pattern"), levels = c("B_no pattern", "A_pattern"))) 
+> 
+> ecoli_palette <- c("firebrick1",
++                    "goldenrod1",
++                    "mediumslateblue",
++                    "black")
+> 
+> pathogenic_ecoli <- c("EAEC", "STEC", "EPEC", "ETEC") 
+> (pathogenic_ecoli_plot <- ggplot(bacteria_data %>% filter(outcome_clean %in% pathogenic_ecoli),
++                                  aes(x = risk_factor_value, y = fit)) + 
++     geom_ribbon(aes(ymin = lwrS, ymax= uprS, fill=outcome_clean,
++                     alpha = pattern)) +
++     scale_color_manual(values = ecoli_palette) +
++     scale_fill_manual(values = ecoli_palette) +
++     scale_alpha_manual(values = c(0.1, 0.5), guide="none") +
++     scale_x_continuous(labels = c(15, 20, 25, 30),
++                        breaks = c(15, 20, 25, 30)) +
++     geom_line(aes(col=outcome_clean))  +
++     ylab("Prevalence (%)") +
++     xlab("Weekly average temperature (C)") +
++     guides(color = guide_legend(ncol = 3, nrow = ),
++            fill = guide_legend(ncol = 3)) +
++     theme_bw() +
++     theme(
++       legend.position = "bottom",
++       legend.title = element_blank(),
++       legend.key.size = unit(1/10, "in"),
++       legend.key.height= unit(1/10, 'in'),
++       legend.key.width= unit(1/10, 'in'),
++       legend.text = element_text(size=8),
++       axis.text = element_text(size = 6),
++       axis.title = element_text(size = 8),
++       plot.title = element_text(size= 10),
++       strip.background = element_blank(),
++       strip.text.x = element_blank()
++     ) + 
++     ggtitle(expression(paste("B) Pathogenic ", italic("Escherichia coli")))))
+> 
+> 
+> 
+> bacteria_palette <- c("darkorchid1", 
++                       "darkgoldenrod1",
++                       "dodgerblue2",
++                       "deeppink",
++                       "darkgreen")
+> 
+> (bacteria_plot <- ggplot(bacteria_data %>% filter(!outcome_clean %in% pathogenic_ecoli, outcome_clean != "Plesiomonas"),
++                     aes(x = risk_factor_value, y = fit)) + 
++   geom_ribbon(aes(ymin = lwrS, ymax= uprS, fill=outcome_clean, alpha = pattern)) +
++   scale_color_manual(values = bacteria_palette) +
++   scale_fill_manual(values = bacteria_palette) +
++   scale_alpha_manual(values = c(0.08, 0.5), guide="none") +
++   scale_x_continuous(labels = c(15, 20, 25, 30),
++                      breaks = c(15, 20, 25, 30)) +
++   geom_line(aes(col=outcome_clean))  +
++   ylab("Prevalence (%)") +
++   xlab("Weekly average temperature (C)") +
++   guides(color = guide_legend(ncol = 3, nrow = ),
++          fill = guide_legend(ncol = 3)) +
++   theme_bw() +
++   theme(
++     legend.position = "bottom",
++     legend.title = element_blank(),
++     legend.key.size = unit(1/10, "in"),
++     legend.key.height= unit(1/10, 'in'),
++     legend.key.width= unit(1/10, 'in'),
++     legend.text = element_text(size=8),
++     axis.text = element_text(size = 6),
++     axis.title = element_text(size = 8),
++     plot.title = element_text(size= 10),
++     strip.background = element_blank(),
++     strip.text.x = element_blank()
++   ) + 
++   ggtitle("C) Other Bacteria"))
+> 
+> 
+> parasite_palette = c("#CC61B0", "#5D69B1", "#E58606", "#52BCA3")
+> parasite_data = parasite_data %>% mutate(pattern = 
++                                            factor(ifelse(outcome_clean %in% c("Cryptosporidium"), "A_pattern", "B_no pattern"), #"E. bieneusi" - this was no longer significant after switching to adjusted models
++                                                   levels = c("B_no pattern", "A_pattern")))
+> parasite_plot <- ggplot(parasite_data, 
++                         aes(x = risk_factor_value, y = fit)) + 
++   geom_ribbon(aes(ymin = lwrS, ymax= uprS, fill=outcome_clean, alpha = pattern)) +
++   scale_color_manual(values=parasite_palette) +
++   scale_fill_manual(values=parasite_palette) +
++   scale_alpha_manual(values = c(0.1, 0.5), guide="none") +
++   geom_line(aes(col=outcome_clean))  +
++   ylab("Prevalence (%)") +
++   xlab("Weekly average temperature (C)") +
++   ylim(0, 50) +
++   scale_x_continuous(labels = c(15, 20, 25, 30),
++                      breaks = c(15, 20, 25, 30)) +
++   guides(color = guide_legend(ncol = 2),
++          fill = guide_legend(ncol = 2)) +
++   theme_bw() +
++   theme(
++     legend.position = "bottom",
++     legend.title = element_blank(),
++     legend.key.size = unit(1/10, "in"),
++     legend.key.height= unit(1/10, 'in'),
++     legend.key.width= unit(1/10, 'in'),
++     legend.text = element_text(size=8),
++     axis.text = element_text(size = 6),
++     axis.title = element_text(size = 8),
++     plot.title = element_text(size= 10)
++   ) + 
++   ggtitle("D) Parasites")
+> parasite_plot
+> 
+> virus_palette <- c("#931d54","#f2a527","midnightblue","#29671b")
+> 
+> virus_plot <- ggplot(virus_data %>% mutate(pattern = factor(ifelse(outcome_clean == "Sapovirus", "A_pattern","B_no pattern"), levels = c("B_no pattern", "A_pattern"))),
++                         aes(x = risk_factor_value, y = fit)) + 
++   geom_ribbon(aes(ymin = lwrS, ymax= uprS, fill=outcome_clean, alpha = pattern)) +
++   scale_color_manual(values=virus_palette) +
++   scale_fill_manual(values=virus_palette) +
++   scale_alpha_manual(values = c(0.1, 0.5), guide="none") +
++   geom_line(aes(col=outcome_clean))  +
++   ylab("Prevalence (%)") +
++   xlab("Weekly average temperature (C)") +
++   guides(color = guide_legend(ncol = 2),
++          fill = guide_legend(ncol = 2)) +
++   scale_x_continuous(labels = c(15, 20, 25, 30),
++                      breaks = c(15, 20, 25, 30)) +
++   theme_bw() +
++   theme(
++     legend.position = "bottom",
++     legend.title = element_blank(),
++     legend.key.size = unit(1/10, "in"),
++     legend.key.height= unit(1/10, 'in'),
++     legend.key.width= unit(1/10, 'in'),
++     legend.text = element_text(size=8),
++     axis.text = element_text(size = 6),
++     axis.title = element_text(size = 8),
++     plot.title = element_text(size= 10)
++   ) + 
++   ggtitle("E) Viruses")
+> virus_plot
+> 
+> # diar_virus <- grid.arrange(diar_plot, virus_plot, parasite_plot, ncol = 1, nrow = 3, heights = c(1.5, 1.5, 1.5))
+> 
+> ecoli_parasite <- grid.arrange(pathogenic_ecoli_plot, parasite_plot, ncol = 1, nrow = 2, heights = c(1, 1))
+> 
+> bacteria_virus <- grid.arrange(bacteria_plot, virus_plot, ncol = 1)
+> 
+> combined_plot <- grid.arrange(diar_plot, ecoli_parasite, bacteria_virus, ncol = 3)
+> 
+> ggsave(combined_plot,
++        filename = paste0(here::here(), "/4-figures/3-plot-gam-temp-maintext.tiff"),
++        height = 6, width = 10, units = "in")
+> 
+> #--------------------------------------
+> # Capture session info
+> #--------------------------------------
+> sessionInfo()
+R version 4.2.0 (2022-04-22)
+Platform: x86_64-apple-darwin17.0 (64-bit)
+Running under: macOS Big Sur/Monterey 10.16
+
+Matrix products: default
+BLAS:   /Library/Frameworks/R.framework/Versions/4.2/Resources/lib/libRblas.0.dylib
+LAPACK: /Library/Frameworks/R.framework/Versions/4.2/Resources/lib/libRlapack.dylib
+
+locale:
+[1] en_US.UTF-8/en_US.UTF-8/en_US.UTF-8/C/en_US.UTF-8/en_US.UTF-8
+
+attached base packages:
+[1] parallel  grid      stats     graphics  grDevices utils     datasets 
+[8] methods   base     
+
+other attached packages:
+ [1] cowplot_1.1.1      MetBrewer_0.2.0    RColorBrewer_1.1-3 rcartocolor_2.0.0 
+ [5] broom_1.0.5        magrittr_2.0.3     doRNG_1.8.2        rngtools_1.5.2    
+ [9] doParallel_1.0.17  iterators_1.0.14   foreach_1.5.2      tictoc_1.1        
+[13] rmarkdown_2.25     kableExtra_1.3.4   forcats_0.5.2      readr_2.1.3       
+[17] tibble_3.2.1       tidyverse_1.3.2    pgirmess_2.0.0     wrapr_2.0.9       
+[21] caret_6.0-93       lattice_0.20-45    viridis_0.6.4      viridisLite_0.4.2 
+[25] purrr_1.0.2        DHARMa_0.4.6       gamm4_0.2-6        lme4_1.1-35.1     
+[29] Matrix_1.6-4       mgcv_1.8-40        nlme_3.1-160       assertthat_0.2.1  
+[33] boxr_0.3.6         ncdf4_1.19         stringr_1.5.1      lubridate_1.8.0   
+[37] washb_0.2.2        gridExtra_2.3      reshape2_1.4.4     tidyr_1.3.0       
+[41] ggcorrplot_0.1.4   ggplot2_3.4.4      dplyr_1.1.4        here_1.0.1        
+
+loaded via a namespace (and not attached):
+ [1] readxl_1.4.3         backports_1.4.1      systemfonts_1.0.4   
+ [4] plyr_1.8.9           sp_1.5-0             splines_4.2.0       
+ [7] listenv_0.8.0        digest_0.6.33        htmltools_0.5.7     
+[10] fansi_1.0.6          googlesheets4_1.0.1  tzdb_0.3.0          
+[13] recipes_1.0.2        globals_0.16.1       modelr_0.1.9        
+[16] gower_1.0.0          svglite_2.1.0        hardhat_1.2.0       
+[19] colorspace_2.1-0     rvest_1.0.3          textshaping_0.3.6   
+[22] haven_2.5.1          xfun_0.41            crayon_1.5.2        
+[25] jsonlite_1.8.8       survival_3.4-0       glue_1.6.2          
+[28] gtable_0.3.4         gargle_1.2.1         ipred_0.9-13        
+[31] webshot_0.5.4        future.apply_1.9.1   scales_1.3.0        
+[34] DBI_1.1.3            Rcpp_1.0.11          spData_2.2.0        
+[37] units_0.8-0          spdep_1.2-7          proxy_0.4-27        
+[40] stats4_4.2.0         lava_1.6.10          prodlim_2019.11.13  
+[43] httr_1.4.7           wk_0.7.0             farver_2.1.1        
+[46] pkgconfig_2.0.3      nnet_7.3-18          dbplyr_2.2.1        
+[49] deldir_1.0-6         utf8_1.2.4           labeling_0.4.3      
+[52] tidyselect_1.2.0     rlang_1.1.2          munsell_0.5.0       
+[55] cellranger_1.1.0     tools_4.2.0          cli_3.6.2           
+[58] generics_0.1.3       evaluate_0.23        fastmap_1.1.1       
+[61] ragg_1.2.3           ModelMetrics_1.2.2.2 knitr_1.45.8        
+[64] fs_1.6.3             s2_1.1.0             future_1.28.0       
+[67] xml2_1.3.3           compiler_4.2.0       rstudioapi_0.14     
+[70] e1071_1.7-11         reprex_2.0.2         stringi_1.8.2       
+[73] classInt_0.4-8       nloptr_2.0.3         vctrs_0.6.5         
+[76] pillar_1.9.0         lifecycle_1.0.4      data.table_1.14.10  
+[79] R6_2.5.1             KernSmooth_2.23-20   parallelly_1.32.1   
+[82] codetools_0.2-18     boot_1.3-28          MASS_7.3-58.1       
+[85] rprojroot_2.0.4      withr_2.5.2          hms_1.1.3           
+[88] rpart_4.1.16         timeDate_4021.106    class_7.3-20        
+[91] minqa_1.2.6          googledrive_2.0.0    sf_1.0-12           
+[94] pROC_1.18.0         
+> 
+> proc.time()
+   user  system elapsed 
+ 87.529  11.004  99.308 

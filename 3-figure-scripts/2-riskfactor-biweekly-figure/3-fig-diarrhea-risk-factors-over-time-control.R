@@ -186,7 +186,7 @@ n_lab <- paste0(n_letter, ") ", "Number of diarrhea observations per time period
 names(n_lab) = c("black")
 
 ## define rainy season
-rainy_season_def = read.csv(paste0(here::here(),"/results/season_definitions.csv")) %>% 
+rainy_season_def = read.csv(paste0(data_dir,"/season_definitions.csv")) %>% 
   select(-X) %>%
   rename("year" = "season") %>%
   mutate(season_start = as.Date(start),

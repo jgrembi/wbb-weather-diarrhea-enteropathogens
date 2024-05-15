@@ -7,7 +7,7 @@
 #######################################
 
 rm(list=ls())
-source(here::here("0-config.R"))
+source(paste0(here::here(), "/0-config.R"))
 
 
 

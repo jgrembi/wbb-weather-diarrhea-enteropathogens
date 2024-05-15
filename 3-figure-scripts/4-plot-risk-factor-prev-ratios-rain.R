@@ -8,7 +8,7 @@
 # unadjusted models
 #######################################
 rm(list=ls())
-source("0-config.R")
+source(paste0(here::here(),"/0-config.R"))
 
 # read in results --------------------------------------------------
 prev_table = readRDS(paste0(data_dir, "corrected_PR_tables_nointeraction.RDS"))

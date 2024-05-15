@@ -5,7 +5,7 @@
 # Script to assess the AIC/BIC of models that include interaction term 
 #######################################
 rm(list=ls())
-source("0-config.R")
+source(paste0(here::here(), "/0-config.R"))
 
 # read in diarrhea results --------------------------------------------------
 adjusted_directory <- paste0(offset_results_path, "gam_outputs/diarrhea-adjusted-0")

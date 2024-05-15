@@ -1,0 +1,434 @@
+
+R version 4.2.0 (2022-04-22) -- "Vigorous Calisthenics"
+Copyright (C) 2022 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin17.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> #######################################
+> # WASH Benefits Bangladesh  
+> # Hydrometeorological risk factors for diarrhea and enteropathogens
+> 
+> # Script to create the demographic characteristics table
+> # of those studied in the diarrhea and pathogen cohorts
+> #######################################
+> rm(list=ls())
+> source(paste0(here::here(), "/0-config.R"))
+here() starts at /Users/JGrembi/Dropbox/08_JadeCollaboration/wbb-weather-diarrhea-enteropathogens
+
+Attaching package: ‘dplyr’
+
+The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+Loading required package: ggplot2
+
+Attaching package: ‘reshape2’
+
+The following object is masked from ‘package:tidyr’:
+
+    smiths
+
+
+Attaching package: ‘gridExtra’
+
+The following object is masked from ‘package:dplyr’:
+
+    combine
+
+Welcome to the washb package
+Version: 0.2.2
+Created on 2018-11-07
+
+This software was developed with funding from the
+Bill & Melinda Gates Foundation (grant number OPPGD759).
+
+The package's reference manual and vignette are also online:
+https://ben-arnold.github.io/washb
+
+
+Attaching package: ‘lubridate’
+
+The following objects are masked from ‘package:base’:
+
+    date, intersect, setdiff, union
+
+Loading required package: nlme
+
+Attaching package: ‘nlme’
+
+The following object is masked from ‘package:dplyr’:
+
+    collapse
+
+This is mgcv 1.8-40. For overview type 'help("mgcv-package")'.
+Loading required package: Matrix
+
+Attaching package: ‘Matrix’
+
+The following objects are masked from ‘package:tidyr’:
+
+    expand, pack, unpack
+
+Loading required package: lme4
+
+Attaching package: ‘lme4’
+
+The following object is masked from ‘package:nlme’:
+
+    lmList
+
+This is gamm4 0.2-6
+
+This is DHARMa 0.4.6. For overview type '?DHARMa'. For recent changes, type news(package = 'DHARMa')
+Loading required package: viridisLite
+Loading required package: lattice
+
+Attaching package: ‘caret’
+
+The following object is masked from ‘package:purrr’:
+
+    lift
+
+
+Attaching package: ‘wrapr’
+
+The following objects are masked from ‘package:Matrix’:
+
+    pack, unpack
+
+The following object is masked from ‘package:mgcv’:
+
+    %.%
+
+The following objects are masked from ‘package:tidyr’:
+
+    pack, unpack
+
+The following object is masked from ‘package:dplyr’:
+
+    coalesce
+
+── Attaching packages ─────────────────────────────────────── tidyverse 1.3.2 ──
+✔ tibble  3.2.1     ✔ forcats 0.5.2
+✔ readr   2.1.3     
+── Conflicts ────────────────────────────────────────── tidyverse_conflicts() ──
+✖ lubridate::as.difftime() masks base::as.difftime()
+✖ wrapr::coalesce()        masks dplyr::coalesce()
+✖ nlme::collapse()         masks dplyr::collapse()
+✖ gridExtra::combine()     masks dplyr::combine()
+✖ lubridate::date()        masks base::date()
+✖ Matrix::expand()         masks tidyr::expand()
+✖ dplyr::filter()          masks stats::filter()
+✖ tibble::has_name()       masks assertthat::has_name()
+✖ lubridate::intersect()   masks base::intersect()
+✖ dplyr::lag()             masks stats::lag()
+✖ caret::lift()            masks purrr::lift()
+✖ wrapr::pack()            masks Matrix::pack(), tidyr::pack()
+✖ lubridate::setdiff()     masks base::setdiff()
+✖ lubridate::union()       masks base::union()
+✖ wrapr::unpack()          masks Matrix::unpack(), tidyr::unpack()
+✖ tibble::view()           masks wrapr::view()
+
+Attaching package: ‘kableExtra’
+
+The following object is masked from ‘package:dplyr’:
+
+    group_rows
+
+Loading required package: foreach
+
+Attaching package: ‘foreach’
+
+The following objects are masked from ‘package:purrr’:
+
+    accumulate, when
+
+Loading required package: iterators
+Loading required package: parallel
+Loading required package: rngtools
+
+Attaching package: ‘magrittr’
+
+The following object is masked from ‘package:purrr’:
+
+    set_names
+
+The following object is masked from ‘package:tidyr’:
+
+    extract
+
+
+Attaching package: ‘cowplot’
+
+The following object is masked from ‘package:lubridate’:
+
+    stamp
+
+> 
+> # Load datasets
+> d_diarrhea_0 = readRDS(paste0(clean_offset_data_dir, clean_diarr_merged_offset))
+> d_pathogens_0 = readRDS(paste0(clean_offset_data_dir, clean_pathogen_merged_offset))
+> 
+> # Restrict diarrhea to control arm
+> d_diarrhea_0 = d_diarrhea_0 %>% filter(intervention==0) %>%
++   mutate(tr_received = ifelse(intervention == 0, "Control", tr))
+> 
+> # Rename / recode datasets
+> d_diarrhea = d_diarrhea_0
+> names(d_diarrhea)[names(d_diarrhea)=="tr_received"]="tr_ref"
+> 
+> d_pathogens = d_pathogens_0
+> names(d_pathogens)[names(d_pathogens)=="tr"]="tr_ref"
+> 
+> # Return name of the study
+> f_name <- function(study) {
++   name_study = deparse(substitute(study))
++   return(substring(name_study,3))
++ }
+> 
+> # Number of children
+> diarrhea_child = n_distinct(d_diarrhea$dataid,d_diarrhea$childid)
+> pathogens_child = n_distinct(d_pathogens$childid)
+> 
+> child_names = c("diarrhea_child" = diarrhea_child,
++                 "pathogens_child" = pathogens_child)
+> 
+> f_children <- function(name_study) {
++   name_variable_child = paste0(name_study, "_child")
++   n_children = as.numeric(child_names[name_variable_child])
++   n_children_format = formatC(n_children, big.mark = ",")
++   return(n_children_format)
++ }
+> 
+> # Observations
+> f_observations <- function(study){
++   n_obs = nrow(study)
++   return(n_obs)
++ }
+> 
+> format_obs <- function(observations) {
++   obs_format <- formatC(observations, big.mark = ",")
++   return(obs_format)
++ }
+> 
+> # Study years
+> years_list = list("2012", "2013", "2014", "2015", "2016")
+> f_years <- function(study,years = years_list) {
++   c_year = c()
++   for (year in years) {
++     study_table = table(study["year"])
++     study_y = ifelse(is.na(as.integer(study_table[year])) == TRUE, 0, as.integer(study_table[year]))
++     study_y_format = paste0(formatC(study_y, big.mark = ","),
++                             " (",sprintf("%0.01f", as.numeric(study_y)/f_observations(study)*100),"%",")" )
++     c_year = append(c_year, study_y_format)
++   }
++   return(c_year)
++ }
+> 
+> # Mean ages
+> d_diarrhea <- d_diarrhea %>% mutate(agem = as.numeric(agey * 12))
+> d_pathogens <- d_pathogens %>% mutate(agem = as.numeric(agey * 12))
+> f_age <- function(study) {
++   age_m <- study$agem
++   mean_age <- mean(age_m, na.rm = T)
++   sd_age <- sd(age_m)
++   age_format <- paste0(sprintf("%0.01f", mean_age), " (", sprintf("%0.01f", sd_age), ")")
++   return(age_format)
++ }
+> 
+> # Season
+> f_season <- function(study) {
++   season_table = table(study$season)
++   dry = as.integer(season_table["dry"])
++   rainy = as.integer(season_table["rainy"])
++   rainy_format = paste0(formatC(rainy, big.mark = ","),
++                         " (",sprintf("%0.01f", rainy/f_observations(study)*100),"%",")" )
++   dry_format = paste0(formatC(dry, big.mark = ","),
++                       " (",sprintf("%0.01f", dry/f_observations(study)*100),"%",")" )
++   c_season = c(rainy_format, dry_format)
++   return(c_season)
++ }
+> 
+> # Antibiotics
+> f_antibiotics_deworming <- function(study, study_name) {
++   if (study_name == "pathogens") {
++     n_antibiotics = as.numeric(table(study$abx_7d)["1"])
++     antibiotics_format = paste0(formatC(n_antibiotics, big.mark = ","),
++                                 " (",sprintf("%0.01f", n_antibiotics/f_observations(study)*100),"%",")" )
++   } else {
++     antibiotics_format = ""
++   }
++   return(antibiotics_format)
++ }
+> 
+> # Treatment arm assignments
+> f_treatment <- function(study) {
++   tr_table = table(study$tr_ref)
++   names = c("Control", "Handwashing", "Nutrition", "Nutrition + WSH", "Sanitation", "Water", "WSH")
++   names_table = names(tr_table)
++   print(names_table)
++   n_tr = c("","","","","","","")
++   numbers = as.numeric(tr_table)
++   count = 1
++   for (i in (1:length(names))) {
++     if (names_table[i] %in% names) {
++       row = which(names == names_table[i])
++       n = as.numeric(tr_table[names[row]])
++       tr_format =  paste0(formatC(n, big.mark = ",")," (",sprintf("%0.01f", n/f_observations(study)*100),"%",")" )
++       n_tr[row] = tr_format
++     } else {
++       if (identical(names_table[i], "N+WSH")) {
++         row = which(names == "Nutrition + WSH")
++         n = as.numeric(tr_table["N+WSH"])
++         print(n)
++         print(names_table[i])
++         tr_format =  paste0(formatC(n, big.mark = ",")," (", sprintf("%0.01f", n/f_observations(study)*100),"%",")" )
++         n_tr[row] = tr_format
++       }
++     }
++   }
++   return(n_tr)
++ }
+> 
+> # Define variables (rows)
+> variables_f = c("Children" = f_children,
++                 "Observations" = f_observations,
++                 "years" = f_years, "age" = f_age,
++                 "season" = f_season,
++                 "Antibiotics_deworming" = f_antibiotics_deworming,
++                 "Treatment arms" = f_treatment)
+> 
+> # Calculate variables for each study
+> study_demo <- function(study, variables = variables_f) {
++   c_study = c()
++   name_study = substring(deparse(substitute(study)),3)
++   print(name_study)
++   variables_names = names(variables)
++   count = 0
++   for (v in variables) {
++     count = count +1
++     if (variables_names[count]=="Children") {
++       c_study = append(c_study, f_children(name_study))
++     } else {
++       if (variables_names[count] == "Observations") {
++         c_study = append(c_study, format_obs(f_observations(study))) 
++         } else {
++           if (variables_names[count]=="Antibiotics_deworming") {
++             c_study = append(c_study,f_antibiotics_deworming(study, name_study)) 
++             } else {
++               c_study = append(c_study, v(study))
++         }
++       }
++     }
++   }
++   return(c_study)
++ }
+> 
+> table_demographics = cbind(study_demo(d_diarrhea), 
++                            study_demo(d_pathogens))
+[1] "diarrhea"
+[1] "Control"
+[1] "pathogens"
+[1] "Control"   "WSH"       "Nutrition" "N+WSH"    
+[1] 360
+[1] "N+WSH"
+> names = c("Diarrhea", 
++           "Pathogens")
+> 
+> variables_names <- c("Children", "Observations", 
++                      "2012", "2013", "2014", "2015", "2016",
++                      "Mean age in months (SD)",
++                      "Rainy", "Dry", "Antibiotics", 
++                      "Control", "Handwashing", "Nutrition",
++                      "Nutrition + WSH", "Sanitation", "Water", "WSH")
+> 
+> colnames(table_demographics) = names
+> rownames(table_demographics) = variables_names
+> 
+> write.csv(table_demographics, paste0(here::here(), "/6-tables/1-participant-demographics.csv"))
+> 
+> #--------------------------------------
+> # Capture session info
+> #--------------------------------------
+> sessionInfo()
+R version 4.2.0 (2022-04-22)
+Platform: x86_64-apple-darwin17.0 (64-bit)
+Running under: macOS Big Sur/Monterey 10.16
+
+Matrix products: default
+BLAS:   /Library/Frameworks/R.framework/Versions/4.2/Resources/lib/libRblas.0.dylib
+LAPACK: /Library/Frameworks/R.framework/Versions/4.2/Resources/lib/libRlapack.dylib
+
+locale:
+[1] en_US.UTF-8/en_US.UTF-8/en_US.UTF-8/C/en_US.UTF-8/en_US.UTF-8
+
+attached base packages:
+[1] parallel  grid      stats     graphics  grDevices utils     datasets 
+[8] methods   base     
+
+other attached packages:
+ [1] cowplot_1.1.1      MetBrewer_0.2.0    RColorBrewer_1.1-3 rcartocolor_2.0.0 
+ [5] broom_1.0.5        magrittr_2.0.3     doRNG_1.8.2        rngtools_1.5.2    
+ [9] doParallel_1.0.17  iterators_1.0.14   foreach_1.5.2      tictoc_1.1        
+[13] rmarkdown_2.25     kableExtra_1.3.4   forcats_0.5.2      readr_2.1.3       
+[17] tibble_3.2.1       tidyverse_1.3.2    pgirmess_2.0.0     wrapr_2.0.9       
+[21] caret_6.0-93       lattice_0.20-45    viridis_0.6.4      viridisLite_0.4.2 
+[25] purrr_1.0.2        DHARMa_0.4.6       gamm4_0.2-6        lme4_1.1-35.1     
+[29] Matrix_1.6-4       mgcv_1.8-40        nlme_3.1-160       assertthat_0.2.1  
+[33] boxr_0.3.6         ncdf4_1.19         stringr_1.5.1      lubridate_1.8.0   
+[37] washb_0.2.2        gridExtra_2.3      reshape2_1.4.4     tidyr_1.3.0       
+[41] ggcorrplot_0.1.4   ggplot2_3.4.4      dplyr_1.1.4        here_1.0.1        
+
+loaded via a namespace (and not attached):
+ [1] readxl_1.4.3         backports_1.4.1      systemfonts_1.0.4   
+ [4] plyr_1.8.9           sp_1.5-0             splines_4.2.0       
+ [7] listenv_0.8.0        digest_0.6.33        htmltools_0.5.7     
+[10] fansi_1.0.6          googlesheets4_1.0.1  tzdb_0.3.0          
+[13] recipes_1.0.2        globals_0.16.1       modelr_0.1.9        
+[16] gower_1.0.0          svglite_2.1.0        hardhat_1.2.0       
+[19] colorspace_2.1-0     rvest_1.0.3          haven_2.5.1         
+[22] xfun_0.41            crayon_1.5.2         jsonlite_1.8.8      
+[25] survival_3.4-0       glue_1.6.2           gtable_0.3.4        
+[28] gargle_1.2.1         ipred_0.9-13         webshot_0.5.4       
+[31] future.apply_1.9.1   scales_1.3.0         DBI_1.1.3           
+[34] Rcpp_1.0.11          spData_2.2.0         units_0.8-0         
+[37] spdep_1.2-7          proxy_0.4-27         stats4_4.2.0        
+[40] lava_1.6.10          prodlim_2019.11.13   httr_1.4.7          
+[43] wk_0.7.0             pkgconfig_2.0.3      nnet_7.3-18         
+[46] dbplyr_2.2.1         deldir_1.0-6         utf8_1.2.4          
+[49] tidyselect_1.2.0     rlang_1.1.2          munsell_0.5.0       
+[52] cellranger_1.1.0     tools_4.2.0          cli_3.6.2           
+[55] generics_0.1.3       evaluate_0.23        fastmap_1.1.1       
+[58] ModelMetrics_1.2.2.2 knitr_1.45.8         fs_1.6.3            
+[61] s2_1.1.0             future_1.28.0        xml2_1.3.3          
+[64] compiler_4.2.0       rstudioapi_0.14      e1071_1.7-11        
+[67] reprex_2.0.2         stringi_1.8.2        classInt_0.4-8      
+[70] nloptr_2.0.3         vctrs_0.6.5          pillar_1.9.0        
+[73] lifecycle_1.0.4      data.table_1.14.10   R6_2.5.1            
+[76] KernSmooth_2.23-20   parallelly_1.32.1    codetools_0.2-18    
+[79] boot_1.3-28          MASS_7.3-58.1        rprojroot_2.0.4     
+[82] withr_2.5.2          hms_1.1.3            rpart_4.1.16        
+[85] timeDate_4021.106    class_7.3-20         minqa_1.2.6         
+[88] googledrive_2.0.0    sf_1.0-12            pROC_1.18.0         
+> 
+> proc.time()
+   user  system elapsed 
+  6.226   0.740   7.256 
