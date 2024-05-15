@@ -9,48 +9,38 @@
 #SBATCH --time=00:00:60
 #SBATCH --partition=relman
 
-module --force purge
-
-module load math
-module load devel
-
-# load gcc, a C++ compiler (required for certain packages)
-module load gcc/10
-# module load system
-# module load readline/7.0
-
-# load R version 4.2.0 (required for certain packages)
-module load R/4.2.0
-#module load readline/7.0
-
-# load software required for spatial analyses in R
-ml physics gdal udunits proj geos cmake
-# module load system
-module load readline/7.0
-
-ml pandoc/2.7.3
-
-#######################################################################
-## Install packages needed
-#######################################################################
-#R CMD BATCH --no-save 00-install.packages.R 0-install.packages.Rout
 
 
 
 #######################################################################
-## Run pre-processing scripts to make all clean data.frames for analysis
+## Run pre-processing scripts 
+## These make all clean data.frames for analysis, including :
+## outcome data from the trial, 
+## pre-processing of hydrometeorological data,
+## and generating exposure variables from hydrometeorological data.
 #######################################################################
-sbatch 1-dm/00-1-process-raw-data.sh
+sbatch --wait 1-dm/00-1-process-raw-data.sh
+
 #######################################################################
 ## Run model fits
 #######################################################################
-sbatch 2a-run-models/00-2-run-fit-models.sh
+wait
+sbatch --wait 2a-fit-models/00-2-run-fit-models.sh
 
 #######################################################################
 ## Run manuscript statistics from results section
 #######################################################################
-sbatch 2b-analysis/00-3-run-analysis-manuscript-stats.sh
+wait
+sbatch --wait 2b-analysis/00-3-run-analysis-manuscript-stats.sh
 
 #######################################################################
 ## Run manuscript figures
 #######################################################################
+wait
+sbatch --wait 3-figure-scripts/00-4-run-figures.sh
+
+#######################################################################
+## Run manuscript tables
+#######################################################################
+wait
+sbatch 5-figure-scripts/00-5-run-tables.sh
